@@ -470,18 +470,36 @@ def update_confirmed(w_country):
     # Usando shift para desplazar una fila
     covid_data3["daily increase"] = covid_data3["confirmed"] - covid_data3["confirmed"].shift(1)
 
-    fig_line= go.Figure(
-        data=go.Bar(
-            x=covid_data3['date'].tail(30),
-            y=covid_data3['daily increase'].tail(30),
-            name='Daily Confirmed Cases',
-            marker=dict(color='orange'),
-            hoverinfo='text',
-            hovertext=
-            '<b>Date</b>' + covid_data3['date'].tail(30).astype(str) + '<br>' +
-            '<b>Daily Confirmed Cases</b>' + [f'{x:0f}' for x in covid_data3['daily increase'].tail(30)] + '<br>' +
-            '<b>Country</b>' + covid_data3['Country/Region'].tail(30).astype(str) + '<br>'
-        ),
+    # Calculando el promedio móvil de 7 días
+    covid_data3["Rolling Ave"] = covid_data3['daily increase'].rolling(window=7).mean()
+
+    fig_line = go.Figure(
+        data=[
+            go.Bar(
+                x=covid_data3['date'].tail(30),
+                y=covid_data3['daily increase'].tail(30),
+                name='Daily Confirmed Cases',
+                marker=dict(color='orange'),
+                hoverinfo='text',
+                hovertext=
+                '<b>Date: </b>' + covid_data3['date'].tail(30).astype(str) + '<br>' +
+                '<b>Daily Confirmed Cases: </b>' + [f'{x: .0f}' for x in
+                                                    covid_data3['daily increase'].tail(30)] + '<br>' +
+                '<b>Country: </b>' + covid_data3['Country/Region'].tail(30).astype(str) + '<br>'
+            ),
+            go.Scatter(
+                x=covid_data3['date'].tail(30),
+                y=covid_data3['Rolling Ave'].tail(30),
+                mode='lines',
+                name='Rolling Average of the last 7 days - daily confirmed cases',
+                marker=dict(color='#FF00FF'),
+                hoverinfo='text',
+                hovertext=
+                '<b>Date: </b>' + covid_data3['date'].tail(30).astype(str) + '<br>' +
+                '<b>Average of last 7 days: </b>' + [f'{x: .0f}' for x in
+                                                    covid_data3['Rolling Ave'].tail(30)] + '<br>'
+            )
+        ],
         layout=go.Layout(
             title={'text': f'Last Daily Confirmed Cases',
                    'y': 0.92,
@@ -504,15 +522,34 @@ def update_confirmed(w_country):
             xaxis=dict(title='<b>Date</b>',
                        color='white',
                        showline=True,
-                       showgrid=True),
+                       showgrid=True,
+                       showticklabels=True,
+                       linecolor='white',
+                       linewidth=1,
+                       gridwidth=0.1,
+                       gridcolor='#fff',
+                       ticks='outside',
+                       tickfont=dict(
+                           family='Aerial',
+                           color='white',
+                           size=12
+                       )),
             yaxis=dict(title='<b>Daily Confirmed Cases</b>',
                        color='white',
                        showline=True,
-                       showgrid=True),
+                       showgrid=True,
+                       showticklabels=True,
+                       gridwidth=0.1,
+                       linecolor='white',
+                       linewidth=1,
+                       ticks='outside',
+                       tickfont=dict(
+                           family='Aerial',
+                           color='white',
+                           size=12
+                       )),
         ),
     )
-
-
 
     return fig_confirmed, fig_death, fig_recovered, fig_active, fig_donut, fig_line
 
