@@ -9,6 +9,7 @@ from dash import dcc
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import pandas as pd
+import plotly.express as px
 import math
 
 url_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
@@ -23,6 +24,103 @@ url_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/maste
 confirmed = pd.read_csv(url_confirmed)
 deaths = pd.read_csv(url_deaths)
 recovered = pd.read_csv(url_recovered)
+
+# Data full movies
+data = pd.read_csv("data/IMDB_Movies.csv")
+data = data.drop_duplicates()
+
+# Movies - Limpiando
+movies = data.loc[:,
+         ['budget', 'gross', 'genres', 'duration', 'movie_facebook_likes', 'imdb_score', 'movie_title', 'title_year',
+          'content_rating']]
+movies.dropna(how="any", inplace=True)
+movies[['genre', 'genre_2', 'genre_3', 'genre_4']] = movies['genres'].str.split('|', 3, expand=True)
+drop_columnas = ['genre_2', 'genre_3', 'genre_4', 'genres']
+cols = [i for i in movies.columns if i not in drop_columnas]
+movies = movies[cols]
+
+# movies_budget_clean - Limpiando outliers
+IQR = movies["budget"].quantile(.75) - movies["budget"].quantile(.25)
+umbral_superior_maximo = movies["budget"].quantile(.75) + 3 * IQR
+outliers_index = list(movies[movies['budget'] > umbral_superior_maximo].index)
+movies_budget_clean = movies.drop(outliers_index)
+
+IQR = movies_budget_clean["gross"].quantile(.75) - movies_budget_clean["gross"].quantile(.25)
+umbral_superior_maximo = movies_budget_clean["gross"].quantile(.75) + 3 * IQR
+outliers_index = list(movies_budget_clean[movies_budget_clean['gross'] > umbral_superior_maximo].index)
+movies_budget_clean = movies_budget_clean.drop(outliers_index)
+
+# movies_zero_likes - Limpiando outliers y zero likes (irreales)
+mov_bak = movies_budget_clean.copy()
+outliers_index = list(mov_bak[mov_bak['movie_facebook_likes'] == 0].index)
+mov_bak = mov_bak.drop(outliers_index)
+IQR = mov_bak["movie_facebook_likes"].quantile(.75) - mov_bak["movie_facebook_likes"].quantile(.25)
+umbral_superior_maximo = mov_bak["movie_facebook_likes"].quantile(.75) + 3 * IQR
+outliers_index = list(mov_bak[mov_bak['movie_facebook_likes'] > umbral_superior_maximo].index)
+mov_bak = mov_bak.drop(outliers_index)
+
+# Lista única de películas
+movie_names_unique = list(movies["movie_title"].sort_values().unique())
+
+########################################################################################################################
+# Figuras estáticas
+
+fig_gross_budget = px.scatter(movies_budget_clean, x='budget', y='gross', color='genre', symbol='genre',
+                              title="Diagrama de dispersión")
+fig_gross_budget.update_layout(
+    title="Diagrama de dispersión: ingreso vs presupuesto",
+    xaxis_title="Presupuesto",
+    yaxis_title="Ingreso",
+    font=dict(
+        family="Helvetica",
+        size=14,
+        color="Black",
+    ),
+)
+
+movies.sort_values(by=["genre"], inplace=True)
+fig_duration_box = px.box(movies, x="genre", y="duration")
+fig_duration_box.update_layout(
+    title="Diagrama de caja para los diferentes géneros de las películas",
+    xaxis_title="Género",
+    yaxis_title="Duración",
+    font=dict(
+        family="Helvetica",
+        size=14,
+        color="Black",
+    ),
+)
+
+fig_duration_histogram = px.histogram(movies, x="duration",
+                                      title='Histograma de la duración',
+                                      opacity=0.8)
+fig_duration_histogram.update_layout(
+    title="Histograma de la duración",
+    xaxis_title="Duración",
+    yaxis_title="Frecuencia",
+    font=dict(
+        family="Helvetica",
+        size=18,
+        color="Black"
+    )
+)
+
+fig_gross_likes = px.scatter(mov_bak, x="movie_facebook_likes", y="gross", trendline="ols",
+                             trendline_color_override="red")
+
+fig_gross_likes.update_layout(
+    title="Diagrama de dispersión: Ingresos vs Me gusta en Facebook (Eliminando películas con cero 'Me gusta')",
+    xaxis_title="Me gusta en Facebook",
+    yaxis_title="Ingresos",
+    font=dict(
+        family="Helvetica",
+        size=18,
+        color="Black"
+    )
+)
+
+########################################################################################################################
+
 
 # confirmed unpivot
 columnas_quedan = confirmed.columns[:4]
@@ -84,31 +182,114 @@ app.layout = html.Div(children=[
     html.Div(children=[
         html.Div(children=[
 
-            html.Img(src="assets/covid_logo.png",
-                     title="Covid Dashboard",
+            html.Img(src="assets/claqueta.png",
+                     title="Movies Dashboard",
                      style={
-                         "height": "60px",
+                         "height": "100px",
                          "width": "auto",
                          'marginBottom': "25px"
-                     }, id="covid_logo"),
+                     }, id="claqueta"),
 
         ], className="one-third column"),
 
         html.Div([
             html.Div([
-                html.H3("Covid -19", style={"marginBottom": '0px', 'color': 'white'}),
-                html.H5('Track Covid -19 Cases', style={"marginBottom": '0px', 'color': 'white'})
+                html.H3("Movies Dashboard", style={"marginBottom": '0px', 'color': 'white'}),
+                html.H5('Equipo 12 - Analítica de datos', style={"marginBottom": '0px', 'color': 'white'})
             ])
         ], className="one-third column", id="title"),
 
         html.Div([
-            html.H6('Last updated: ' + str(covid_data["date"].iloc[-1].strftime("%d/%m/%y")),
-                    style={'color': 'orange', "textAlign": "right"})
+            html.Img(src="assets/uni.png",
+                     title="Movies Dashboard",
+                     style={
+                         "height": "150px",
+                         "width": "auto",
+                         'marginBottom': "25px",
+                         "paddingLeft": "50px",
+                         "textAlign": "right"
+                     }, id="uni")
         ], className="one-third column", id="title1")
 
     ], id="header", className="row flex display", style={'marginBottom': '25px'}),
 
     # Primera fila
+    html.Div([
+        # Dropdown de películas
+        html.Div([
+            html.P('Seleccionar película: ', className="fix-label", style={'color': 'white'}),
+            dcc.Dropdown(id="dropdown_movies",
+                         multi=False,
+                         searchable=True,
+                         value='The Good, the Bad and the Ugly\xa0',
+                         placeholder='Select Country',
+                         options=[{'label': c, 'value': c} for c in movie_names_unique],
+                         # Lista de diccionarios con los paises
+                         className="dcc-compon",
+                         clearable=False,
+                         ),
+        ], className="create-container three columns"),
+
+        # KPI's rating y likes
+        html.Div(children=[
+            html.Div(children=[
+                dcc.Graph(id="imdb_score_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                          style={'marginTop': '20px'}),
+            ])
+            ,
+            # KPI likes
+            html.Div(children=[
+                dcc.Graph(id="likes_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                          style={'marginTop': '20px'}),
+            ])
+        ], className="create-container three columns"),
+
+        # KPI's gross y budget
+        html.Div(children=[
+            html.Div(children=[
+                dcc.Graph(id="gross_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                          style={'marginTop': '20px'}),
+            ]),
+            html.Div(children=[
+                dcc.Graph(id="budget_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                          style={'marginTop': '20px'}),
+            ])
+        ], className="create-container three columns"),
+
+        # KPI duration
+        html.Div(children=[
+            dcc.Graph(id="duration_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                      style={'marginTop': '20px'})
+        ], className="create-container three columns"),
+
+    ], className="row flex display")
+    ,
+
+    # Segunda fila
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'})
+        ], className="card_container five columns"),
+
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'})
+        ], className="card_container seven columns", style={"marginLeft": "2px"}),
+
+    ], className="row flex display"),
+
+    # Tercer fila
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'})
+        ], className="card_container four columns"),
+
+        html.Div([
+            dcc.Graph(figure=fig_gross_likes, className="dcc-compon", config={'displayModeBar': 'hover'})
+        ], className="card_container eight columns", style={"marginLeft": "2px"}),
+
+    ], className="row flex display"),
+
+    # Cuarta fila
     html.Div([
         html.Div([
             html.H6(children='Global cases',
@@ -204,7 +385,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Segunda fila
+    # Quinta fila
     html.Div([
         # Dropdown + 4 KPI's por país
         html.Div([
@@ -253,6 +434,165 @@ app.layout = html.Div(children=[
 ## CALLBACKS
 ######################################################################################################################
 ######################################################################################################################
+@app.callback(Output('duration_kpi', 'figure'), Output('gross_kpi', 'figure'), Output('budget_kpi', 'figure'),
+              Output('likes_kpi', 'figure'), Output('imdb_score_kpi', 'figure'), Input('dropdown_movies', 'value'))
+def update_movies_kpi(movie_title):
+    max_duration = movies["duration"].sort_values(ascending=False).iloc[0]
+    movie_duration = movies.query("movie_title == @movie_title")["duration"].iloc[0]
+
+    max_gross = movies["gross"].sort_values(ascending=False).iloc[0]
+    movie_gross = movies.query("movie_title == @movie_title")["gross"].iloc[0]
+
+    max_budget = movies["budget"].sort_values(ascending=False).iloc[0]
+    movie_budget = movies.query("movie_title == @movie_title")["budget"].iloc[0]
+
+    max_likes = max_duration = movies["movie_facebook_likes"].sort_values(ascending=False).iloc[0]
+    movie_likes = movies.query("movie_title == @movie_title")["movie_facebook_likes"].iloc[0]
+
+    max_imdb_score = movies["imdb_score"].sort_values(ascending=False).iloc[0]
+    movie_imdb_score = movies.query("movie_title == @movie_title")["imdb_score"].iloc[0]
+
+    duration_kpi = go.Figure(data=go.Indicator(
+        mode="number",
+        delta={
+            'reference': max_duration,
+            # 'valueformat': '.0f',
+            'relative': False,
+        },
+        value=movie_duration,
+        # number={'suffix': " min."},
+        number=dict(
+            valueformat=',',
+            font={'size': 50},
+            suffix=' min.',
+        ),
+        domain={'x': [0, 1], 'y': [0, 1]},
+        # title={'text': "Duración"}
+    ),
+        layout=go.Layout(
+            title={
+                'text': 'Duración',
+                'y': 0.9,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'size': 40},
+                'pad': {'b': 20}
+            },
+            font=dict(color='orange'),
+            paper_bgcolor='#1f2c56',
+            plot_bgcolor='#1f2c56',
+            height=330,
+        )
+    )
+
+    gross_kpi = go.Figure(data=go.Indicator(
+        mode="number+delta",
+        delta={'reference': max_gross},
+        value=movie_gross,
+        number=dict(
+            prefix='$',
+            font={'size': 35}),
+        domain={'y': [0, 1], 'x': [0, 1]},
+    ),
+        layout=go.Layout(
+            title={
+                'text': 'Ingresos',
+                'y': 0.9,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'size': 25},
+                'pad': {'b': 20}
+            },
+            font=dict(color='yellow'),
+            paper_bgcolor='#1f2c56',
+            plot_bgcolor='#1f2c56',
+            height=150,
+        )
+    )
+
+    budget_kpi = go.Figure(data=go.Indicator(
+        mode="number+delta",
+        delta={'reference': max_budget},
+        value=movie_budget,
+        number=dict(
+            prefix='$',
+            font={'size': 35}),
+        domain={'y': [0, 1], 'x': [0, 1]},
+    ),
+        layout=go.Layout(
+            title={
+                'text': 'Presupuesto',
+                'y': 0.9,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'size': 25},
+                'pad': {'b': 20}
+            },
+            font=dict(color='yellow'),
+            paper_bgcolor='#1f2c56',
+            plot_bgcolor='#1f2c56',
+            height=150,
+        )
+    )
+
+    likes_kpi = go.Figure(data=go.Indicator(
+        mode="number+delta",
+        delta={'reference': max_likes},
+        value=movie_likes,
+        number=dict(
+            suffix=' Likes',
+            font={'size': 35}),
+        domain={'y': [0, 1], 'x': [0, 1]},
+    ),
+        layout=go.Layout(
+            title={
+                'text': 'Likes en Facebook',
+                'y': 0.9,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'size': 25},
+                'pad': {'b': 20}
+            },
+            font=dict(color='skyblue'),
+            paper_bgcolor='#1f2c56',
+            plot_bgcolor='#1f2c56',
+            height=150,
+        )
+    )
+
+    imdb_score_kpi = go.Figure(data=go.Indicator(
+        mode="number+delta",
+        delta={'reference': max_imdb_score},
+        value=movie_imdb_score,
+        number=dict(
+            suffix=' puntos',
+            font={'size': 35}),
+        domain={'y': [0, 1], 'x': [0, 1]},
+    ),
+        layout=go.Layout(
+            title={
+                'text': 'Score en IMDb',
+                'y': 0.9,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': {'size': 25},
+                'pad': {'b': 20}
+            },
+            font=dict(color='skyblue'),
+            paper_bgcolor='#1f2c56',
+            plot_bgcolor='#1f2c56',
+            height=150,
+        )
+    )
+
+    return duration_kpi, gross_kpi, budget_kpi, likes_kpi, imdb_score_kpi
+
+
 @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
               Output('active', 'figure'), Output(component_id="donut_chart", component_property="figure"),
               Output('line_chart', 'figure'), [Input('w_countries', 'value')])
@@ -442,7 +782,7 @@ def update_confirmed(w_country):
             textinfo='label+value',
             hole=.7,
             rotation=90,
-            #insidetextorientation='radial'
+            # insidetextorientation='radial'
         ),
         layout=go.Layout(
             title={'text': f'Confirmed Cases: {confirmed}',
@@ -470,7 +810,7 @@ def update_confirmed(w_country):
     # Usando shift para desplazar una fila
     covid_data3["daily increase"] = covid_data3["confirmed"] - covid_data3["confirmed"].shift(1)
 
-    fig_line= go.Figure(
+    fig_line = go.Figure(
         data=go.Bar(
             x=covid_data3['date'].tail(30),
             y=covid_data3['daily increase'].tail(30),
@@ -511,8 +851,6 @@ def update_confirmed(w_country):
                        showgrid=True),
         ),
     )
-
-
 
     return fig_confirmed, fig_death, fig_recovered, fig_active, fig_donut, fig_line
 
