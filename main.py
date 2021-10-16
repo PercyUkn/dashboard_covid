@@ -65,6 +65,31 @@ movie_names_unique = list(movies["movie_title"].sort_values().unique())
 # Lista única de géneros
 genres_unique = list(movies_budget_clean["genre"].sort_values().unique())
 
+# Para el mapa de películas
+data2=data.copy()
+data2[['genre','genre_2','genre_3','genre_4']] = data['genres'].str.split('|', 3, expand=True)
+# Eliminando las columnas genre_2, genre_3 y genre_4
+drop_columnas=['genre_2','genre_3','genre_4','genres']
+cols=[i for i in data2.columns if i not in drop_columnas]
+data2=data2[cols]
+df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/2014_world_gdp_with_codes.csv')
+df = df.rename(columns={"COUNTRY": "country"})
+movies_per_country = data2[["country", "genre", "movie_title"]].groupby(["country", "genre"]).count()
+movies_per_country.reset_index(level=0, inplace=True)
+movies_per_country.reset_index(level=0, inplace=True)
+movies_country_merged = pd.merge(movies_per_country, df, how="left", on="country")
+movies_country_merged = movies_country_merged.drop('GDP (BILLIONS)', 1)
+movies_country_merged[movies_country_merged['CODE'].isna()]
+indices_korea = list(movies_country_merged.query("country == 'South Korea'").index)
+indices_bahamas = list(movies_country_merged.query("country == 'Bahamas'").index)
+indices_usa = list(movies_country_merged.query("country == 'USA'").index)
+indices_uk = list(movies_country_merged.query("country == 'UK'").index)
+movies_country_merged.iloc[indices_bahamas, 3] = "BHS"
+movies_country_merged.iloc[indices_korea, 3] = "KOR"
+movies_country_merged.iloc[indices_uk, 3] = "GBR"
+movies_country_merged.iloc[indices_usa, 3] = "USA"
+movies_country_merged = movies_country_merged.dropna(how="any")
+
 ########################################################################################################################
 # Figuras estáticas
 
@@ -341,13 +366,8 @@ app.layout = html.Div(children=[
     # Cuarta fila
     html.Div([
         html.Div([
-            dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'})
-        ], className="card_container four columns"),
-
-        html.Div([
-            dcc.Graph(figure=fig_gross_likes, className="dcc-compon", config={'displayModeBar': 'hover'})
-        ], className="card_container eight columns", style={"marginLeft": "2px"}),
-
+            dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'},id="choropleth")
+        ], className="card_container twelve columns"),
     ], className="row flex display"),
 
     # Quinta fila
@@ -658,14 +678,14 @@ def update_movies_kpi(movie_title):
 
 
 @app.callback(Output('scatter_gross_budget', 'figure'), Output('box_duration', 'figure'),
-              Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),
+              Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),Output('choropleth', 'figure'),
               Input('dropdown_genres', 'value'))
 def update_genres_charts(genre):
     movies_gross_budget_per_genre = movies_budget_clean.query("genre == @genre")
     fig_scatter_gross_budget = px.scatter(movies_gross_budget_per_genre, x='budget', y='gross', symbol='genre',
                                           title="Diagrama de dispersión", trendline="ols",
                                           trendline_color_override="red")
-                                          #color_discrete_sequence=['green'])
+    # color_discrete_sequence=['green'])
     fig_scatter_gross_budget.update_layout(
         title="Diagrama de dispersión: ingreso vs presupuesto",
         xaxis_title="Presupuesto",
@@ -681,7 +701,7 @@ def update_genres_charts(genre):
 
     movies_duration_box_genre = movies.query("genre == @genre")
     fig_boxplot_duration = px.box(movies_duration_box_genre, x="genre", y="duration")
-                                  #color_discrete_sequence=['blue'])
+    # color_discrete_sequence=['blue'])
     fig_boxplot_duration.update_layout(
         title="Boxplot: Duración",
         xaxis_title="Género",
@@ -729,7 +749,30 @@ def update_genres_charts(genre):
     )
     fig_scatter_gross_likes.update_layout(layout_factory(title="Diagrama de dispersión: Ingresos vs Likes"))
 
-    return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes
+    movies_choropleth_genre = movies_country_merged.query("genre == @genre")
+    fig_choropleth = go.Figure(data=go.Choropleth(
+        locations=movies_choropleth_genre['CODE'],
+        z=movies_choropleth_genre['movie_title'],
+        text=movies_choropleth_genre['country'],
+        colorscale='Blues',
+        autocolorscale=True,
+        marker_line_color='darkgray',
+        marker_line_width=0.5,
+        colorbar_tickprefix='$',
+        colorbar_title='Cantidad de películas',
+    ))
+
+    fig_choropleth.update_layout(
+        title_text='Cantidad de películas por país',
+        geo=dict(
+            showframe=False,
+            showcoastlines=False,
+            projection_type='equirectangular'
+        )
+    )
+
+    fig_choropleth.update_layout(layout_factory(title=f"Cantidad de películas por país, Género: {genre}"))
+    return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, fig_choropleth
 
 
 @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
