@@ -62,6 +62,9 @@ mov_bak = mov_bak.drop(outliers_index)
 # Lista única de películas
 movie_names_unique = list(movies["movie_title"].sort_values().unique())
 
+# Lista única de géneros
+genres_unique = list(movies_budget_clean["genre"].sort_values().unique())
+
 ########################################################################################################################
 # Figuras estáticas
 
@@ -161,10 +164,26 @@ covid_data2 = covid_data.groupby(["date", "Country/Region"])[
     ["confirmed", "recovered", "death", "active"]].sum().reset_index()
 
 
+########################################################################################################################
+
 def calcula_porcentaje(val1, val2):
     if val2 == 0:
         return 0
     return round(((val1 - val2) / val2) * 100, 2)
+
+
+def layout_factory(title, color='#1f2c56'):
+    layout = go.Layout(
+        title=dict(text=title, y=0.92, x=0.5, xanchor='center', yanchor='top'),
+        font=dict(color='white'),
+        hovermode='closest',
+        margin=dict(r=0),
+        titlefont={'color': 'white', 'size': 20},
+        paper_bgcolor='#1f2c56',
+        plot_bgcolor='#1f2c56',
+        legend=dict(orientation='v', bgcolor=color, xanchor='center', x=0.5, y=-0.5)
+    )
+    return layout
 
 
 ######################################################################################################################
@@ -183,7 +202,7 @@ app.layout = html.Div(children=[
         html.Div(children=[
 
             html.Img(src="assets/claqueta.png",
-                     title="Movies Dashboard",
+                     title="Dashboard de películas",
                      style={
                          "height": "100px",
                          "width": "auto",
@@ -228,6 +247,18 @@ app.layout = html.Div(children=[
                          className="dcc-compon",
                          clearable=False,
                          ),
+            html.H3(children='Género',
+                    style={'textAlign': "center",
+                           "color": "white",
+                           "fontSize": 30,
+                           "marginTop": "148px"
+                           }
+                    ),
+            html.P(children="",
+                   style={'textAlign': "center",
+                          "color": "orange",
+                          "fontSize": 40}
+                   , id="movie_genre"),
         ], className="create-container three columns"),
 
         # KPI's rating y likes
@@ -267,17 +298,47 @@ app.layout = html.Div(children=[
 
     # Segunda fila
     html.Div([
+
         html.Div([
-            dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'})
+            html.P('Seleccionar género: ', className="fix-label", style={'color': 'white'}),
+            dcc.Dropdown(id="dropdown_genres",
+                         multi=False,
+                         searchable=True,
+                         value='Action',
+                         placeholder='Seleccionar género',
+                         options=[{'label': c, 'value': c} for c in genres_unique],
+                         className="dcc-compon",
+                         clearable=False,
+                         ),
+        ], className="create-container three columns"),
+
+        html.Div([
+            dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="histogram_duration")
         ], className="card_container five columns"),
 
         html.Div([
-            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'})
-        ], className="card_container seven columns", style={"marginLeft": "2px"}),
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="box_duration")
+        ], className="card_container four columns", style={"marginLeft": "2px"}, ),
 
     ], className="row flex display"),
 
-    # Tercer fila
+    # Tercera fila
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="scatter_gross_budget")
+        ], className="card_container six columns"),
+
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="scatter_gross_likes")
+        ], className="card_container six columns", style={"marginLeft": "2px"}),
+
+    ], className="row flex display"),
+
+    # Cuarta fila
     html.Div([
         html.Div([
             dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'})
@@ -289,7 +350,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Cuarta fila
+    # Quinta fila
     html.Div([
         html.Div([
             html.H6(children='Global cases',
@@ -302,9 +363,9 @@ app.layout = html.Div(children=[
                           "color": "orange",
                           "fontSize": 40}
                    ),
-            html.P('new: ' + f'{covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2]:,.0f}' +
-                   " (" + str(round(((covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2])
-                                     / covid_data1["confirmed"].iloc[-2]) * 100, 2)) + "%)",
+            html.P(children='new: ' + f'{covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2]:,.0f}' +
+                            " (" + str(round(((covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2])
+                                              / covid_data1["confirmed"].iloc[-2]) * 100, 2)) + "%)",
                    style={
                        'textAlign': 'center',
                        'color': 'orange',
@@ -385,7 +446,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Quinta fila
+    # Sexta fila
     html.Div([
         # Dropdown + 4 KPI's por país
         html.Div([
@@ -435,7 +496,8 @@ app.layout = html.Div(children=[
 ######################################################################################################################
 ######################################################################################################################
 @app.callback(Output('duration_kpi', 'figure'), Output('gross_kpi', 'figure'), Output('budget_kpi', 'figure'),
-              Output('likes_kpi', 'figure'), Output('imdb_score_kpi', 'figure'), Input('dropdown_movies', 'value'))
+              Output('likes_kpi', 'figure'), Output('imdb_score_kpi', 'figure'), Output('movie_genre', 'children'),
+              Input('dropdown_movies', 'value'))
 def update_movies_kpi(movie_title):
     max_duration = movies["duration"].sort_values(ascending=False).iloc[0]
     movie_duration = movies.query("movie_title == @movie_title")["duration"].iloc[0]
@@ -451,6 +513,8 @@ def update_movies_kpi(movie_title):
 
     max_imdb_score = movies["imdb_score"].sort_values(ascending=False).iloc[0]
     movie_imdb_score = movies.query("movie_title == @movie_title")["imdb_score"].iloc[0]
+
+    genre = movies.query("movie_title == @movie_title")["genre"].iloc[0]
 
     duration_kpi = go.Figure(data=go.Indicator(
         mode="number",
@@ -590,7 +654,82 @@ def update_movies_kpi(movie_title):
         )
     )
 
-    return duration_kpi, gross_kpi, budget_kpi, likes_kpi, imdb_score_kpi
+    return duration_kpi, gross_kpi, budget_kpi, likes_kpi, imdb_score_kpi, genre
+
+
+@app.callback(Output('scatter_gross_budget', 'figure'), Output('box_duration', 'figure'),
+              Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),
+              Input('dropdown_genres', 'value'))
+def update_genres_charts(genre):
+    movies_gross_budget_per_genre = movies_budget_clean.query("genre == @genre")
+    fig_scatter_gross_budget = px.scatter(movies_gross_budget_per_genre, x='budget', y='gross', symbol='genre',
+                                          title="Diagrama de dispersión", trendline="ols",
+                                          trendline_color_override="red")
+                                          #color_discrete_sequence=['green'])
+    fig_scatter_gross_budget.update_layout(
+        title="Diagrama de dispersión: ingreso vs presupuesto",
+        xaxis_title="Presupuesto",
+        yaxis_title="Ingreso",
+        font=dict(
+            family="Helvetica",
+            size=14,
+            color="Black",
+        ),
+    )
+
+    fig_scatter_gross_budget.update_layout(layout_factory(title="Diagrama de dispersión: ingreso vs presupuesto"))
+
+    movies_duration_box_genre = movies.query("genre == @genre")
+    fig_boxplot_duration = px.box(movies_duration_box_genre, x="genre", y="duration")
+                                  #color_discrete_sequence=['blue'])
+    fig_boxplot_duration.update_layout(
+        title="Boxplot: Duración",
+        xaxis_title="Género",
+        yaxis_title="Duración",
+        font=dict(
+            family="Helvetica",
+            size=14,
+            color="Black",
+        ),
+    )
+    fig_boxplot_duration.update_layout(layout_factory(title="Boxplot: duración"))
+
+    movies_histogram_duration = movies.query("genre==@genre")
+    fig_histogram_duration = px.histogram(movies_histogram_duration, x="duration",
+                                          title='Histograma de la duración',
+                                          opacity=0.8)
+    fig_histogram_duration.update_layout(
+        title=f"Histograma de la duración: {genre}",
+        xaxis_title="Duración",
+        yaxis_title="Frecuencia",
+        font=dict(
+            family="Helvetica",
+            size=18,
+            color="Black"
+        )
+    )
+
+    fig_histogram_duration.update_layout(layout_factory(title=f"Histograma de la duración: {genre}"))
+
+    movies_scatter_gross_likes = mov_bak.query("genre == @genre")
+    # Graficando la linea de tendencia
+    fig_scatter_gross_likes = px.scatter(movies_scatter_gross_likes, x="movie_facebook_likes", y="gross",
+                                         trendline="ols",
+                                         trendline_color_override="red")
+
+    fig_scatter_gross_likes.update_layout(
+        title="Diagrama de dispersión: Ingresos vs Me gusta en Facebook (Eliminando películas con cero 'Me gusta')",
+        xaxis_title="Me gusta en Facebook",
+        yaxis_title="Ingresos",
+        font=dict(
+            family="Helvetica",
+            size=18,
+            color="Black"
+        )
+    )
+    fig_scatter_gross_likes.update_layout(layout_factory(title="Diagrama de dispersión: Ingresos vs Likes"))
+
+    return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes
 
 
 @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
