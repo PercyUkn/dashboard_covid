@@ -90,6 +90,31 @@ movies_country_merged.iloc[indices_uk, 3] = "GBR"
 movies_country_merged.iloc[indices_usa, 3] = "USA"
 movies_country_merged = movies_country_merged.dropna(how="any")
 
+### Para el presupuesto promedio por genero
+
+movies_by_year = movies_budget_clean[["title_year", "genre", "budget"]].sort_values(by=["title_year", "genre"]).groupby(
+    ["title_year", "genre"])
+movies_average_year_genre = movies_by_year.mean(["title_year", "genre"])
+movies_average_year_genre_unstack = movies_average_year_genre.unstack(level=-1)
+movies_average_year_genre_unstack.columns = movies_average_year_genre_unstack.columns.droplevel()
+movies_average_year_genre_unstack.reset_index(level=0, inplace=True)
+movies_average_year_genre_unstack.index.names = ['Index']
+
+# Para likes en Facebook vs votos en IMDb
+IQR = movies["movie_facebook_likes"].quantile(.75) - movies["movie_facebook_likes"].quantile(.25)
+umbral_superior = 110e+06  # Q3 + 1.5 IQR (box plot)
+umbral_superior_maximo = movies["movie_facebook_likes"].quantile(.75) + 3 * IQR
+outliers_index = list(movies[movies['movie_facebook_likes'] > umbral_superior_maximo].index)
+movie_facebook_likes_clean = movies.drop(outliers_index)
+
+IQR = movie_facebook_likes_clean["imdb_score"].quantile(.75) - movie_facebook_likes_clean["imdb_score"].quantile(.25)
+umbral_superior = 146.405e+06  # Q3 + 1.5 IQR (box plot)
+umbral_superior_maximo = movie_facebook_likes_clean["imdb_score"].quantile(.75) + 3 * IQR
+outliers_index = list(
+    movie_facebook_likes_clean[movie_facebook_likes_clean['imdb_score'] > umbral_superior_maximo].index)
+movie_facebook_likes_clean = movie_facebook_likes_clean.drop(outliers_index)
+
+
 ########################################################################################################################
 # Figuras estáticas
 
@@ -427,7 +452,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Sexta fila
+    # Octava fila
     html.Div([
         html.Div([
             html.H6(children='Global cases',
@@ -523,7 +548,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Séptima fila
+    # Novena fila
     html.Div([
         # Dropdown + 4 KPI's por país
         html.Div([
@@ -574,7 +599,6 @@ app.layout = html.Div(children=[
 ######################################################################################################################
 @app.callback(Output('duration_kpi', 'figure'), Output('gross_kpi', 'figure'), Output('budget_kpi', 'figure'),
               Output('likes_kpi', 'figure'), Output('imdb_score_kpi', 'figure'), Output('movie_genre', 'children'),
-
               Input('dropdown_movies', 'value'))
 def update_movies_kpi(movie_title):
     max_duration = movies["duration"].sort_values(ascending=False).iloc[0]
@@ -737,7 +761,9 @@ def update_movies_kpi(movie_title):
 
 @app.callback(Output('scatter_gross_budget', 'figure'), Output('box_duration', 'figure'),
               Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),
-              Output('choropleth', 'figure'),
+              Output('choropleth', 'figure'), Output('average_budget_per_genre', 'figure'),
+              Output('likes_votes_per_genre', 'figure'), Output("imdb_score_per_genre", "figure"),
+              Output('movies_per_year_per_genre','figure'),Output('funnel_category_per_genre','figure'),
               Input('dropdown_genres', 'value'))
 def update_genres_charts(genre):
     movies_gross_budget_per_genre = movies_budget_clean.query("genre == @genre")
@@ -836,7 +862,80 @@ def update_genres_charts(genre):
     )
 
     fig_choropleth.update_layout(layout_factory(title=f"Cantidad de películas por país, Género: {genre}"))
-    return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, fig_choropleth
+
+    fig_average_budget_per_genre = go.Figure(data=go.Bar(x=movies_average_year_genre_unstack["title_year"],
+                                                         y=movies_average_year_genre_unstack[genre]))
+
+    fig_average_budget_per_genre.update_layout(layout_factory(title=f"Presupuesto promedio por género {genre}"))
+
+    fig_average_budget_per_genre.update_layout(
+        xaxis=dict(title='<b>Años</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+        yaxis=dict(title='<b>Presupuesto promedio</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+    )
+
+    fig_average_budget_per_genre.update_layout(layout_factory(title=f"Presupuesto promedio por género {genre}"))
+
+    movie_facebook_likes_clean_per_genre = movie_facebook_likes_clean.query("genre == @genre")
+    fig_likes_votes_per_genre = px.scatter(movie_facebook_likes_clean_per_genre, x="movie_facebook_likes",
+                                           y="imdb_score", trendline="ols",
+                                           trendline_color_override="red", hover_name="movie_title",
+                                           hover_data=["country"])
+
+    fig_likes_votes_per_genre.update_layout(
+        title="Diagrama de dispersión: Votos de IMDB vs Likes de FB y línea de tendencia",
+        xaxis_title="Votos IMDB",
+        yaxis_title="Likes FB",
+        font=dict(
+            family="Helvetica",
+            size=14,
+            color="Black",
+        ),
+    )
+
+    fig_likes_votes_per_genre.update_layout(
+        layout_factory(title=f"Diagrama de dispersión: Votos de IMDB vs Likes de FB, género: {genre}"))
+
+    movies_per_genre = movies.query("genre == @genre")
+    fig_imdb_score_per_genre = px.histogram(movies_per_genre, x="imdb_score",
+                                            title='Distribución de calificaciones de IMDB por género',
+                                            opacity=0.8)
+
+    fig_imdb_score_per_genre.update_layout(
+        layout_factory(title=f"Histograma de calificaciones en IMDB por género: {genre}"))
+
+    fig_imdb_score_per_genre.update_traces(xbins=dict(  # bins used for histogram
+        start=0.0,
+        end=10.0,
+        size=1
+    ))
+
+    number_movies_by_year = movies_per_genre[["title_year"]].sort_values(by=["title_year"]).groupby(["title_year"])
+    number_movies_by_year = number_movies_by_year.size().reset_index(name='count')
+
+    fig_movies_per_year_per_genre = go.Figure(data=go.Bar(x=number_movies_by_year["title_year"],
+                                                         y=number_movies_by_year["count"]))
+
+    fig_movies_per_year_per_genre.update_layout(
+        layout_factory(title=f"Cantidad de películas por año y por género: {genre}"))
+
+    movies_funnel = movies_per_genre.copy()
+    movies_funnel['counts'] = 1
+    movies_funnel = movies_funnel.groupby(['content_rating']).sum()
+    movies_funnel = movies_funnel.reset_index()
+    movies_funnel = movies_funnel.sort_values('counts', ascending=False)
+    fig_funnel_category_per_genre = px.funnel(movies_funnel, x='counts', y='content_rating')
+    fig_funnel_category_per_genre.update_layout(
+        layout_factory(title=f"Embudo según categoría y por género: {genre}"))
+
+    return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, \
+           fig_choropleth, fig_average_budget_per_genre, fig_likes_votes_per_genre, fig_imdb_score_per_genre, \
+           fig_movies_per_year_per_genre,fig_funnel_category_per_genre
 
 
 @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
