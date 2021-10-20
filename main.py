@@ -65,6 +65,9 @@ movie_names_unique = list(movies["movie_title"].sort_values().unique())
 # Lista única de géneros
 genres_unique = list(movies_budget_clean["genre"].sort_values().unique())
 
+# Lista única de categorías
+categories_unique = list(movies["content_rating"].sort_values().unique())
+
 # Para el mapa de películas
 data2 = data.copy()
 data2[['genre', 'genre_2', 'genre_3', 'genre_4']] = data['genres'].str.split('|', 3, expand=True)
@@ -113,7 +116,6 @@ umbral_superior_maximo = movie_facebook_likes_clean["imdb_score"].quantile(.75) 
 outliers_index = list(
     movie_facebook_likes_clean[movie_facebook_likes_clean['imdb_score'] > umbral_superior_maximo].index)
 movie_facebook_likes_clean = movie_facebook_likes_clean.drop(outliers_index)
-
 
 ########################################################################################################################
 # Figuras estáticas
@@ -234,6 +236,13 @@ def layout_factory(title, color='#1f2c56'):
         legend=dict(orientation='v', bgcolor=color, xanchor='center', x=0.5, y=-0.5)
     )
     return layout
+
+
+def trace_patch_factory(color='#8cf781'):
+    patch = dict(
+        marker_color=color
+    )
+    return patch
 
 
 ######################################################################################################################
@@ -432,6 +441,7 @@ app.layout = html.Div(children=[
                       id="funnel_category_per_genre")
         ], className="card_container four columns"),
 
+        # Dropdown de categorías
         html.Div([
             html.P('Seleccionar categoría: ', className="fix-label", style={'color': 'white'}),
             dcc.Dropdown(id="dropdown_categories",
@@ -439,7 +449,7 @@ app.layout = html.Div(children=[
                          searchable=True,
                          value='R',
                          placeholder='Seleccionar género',
-                         options=[{'label': c, 'value': c} for c in genres_unique],
+                         options=[{'label': c, 'value': c} for c in categories_unique],
                          className="dcc-compon",
                          clearable=False,
                          ),
@@ -763,7 +773,7 @@ def update_movies_kpi(movie_title):
               Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),
               Output('choropleth', 'figure'), Output('average_budget_per_genre', 'figure'),
               Output('likes_votes_per_genre', 'figure'), Output("imdb_score_per_genre", "figure"),
-              Output('movies_per_year_per_genre','figure'),Output('funnel_category_per_genre','figure'),
+              Output('movies_per_year_per_genre', 'figure'), Output('funnel_category_per_genre', 'figure'),
               Input('dropdown_genres', 'value'))
 def update_genres_charts(genre):
     movies_gross_budget_per_genre = movies_budget_clean.query("genre == @genre")
@@ -783,6 +793,8 @@ def update_genres_charts(genre):
         ),
     )
 
+    fig_scatter_gross_budget.update_traces(patch=trace_patch_factory())
+
     fig_scatter_gross_budget.update_layout(layout_factory(title="Diagrama de dispersión: ingreso vs presupuesto"))
 
     movies_duration_box_genre = movies.query("genre == @genre")
@@ -800,6 +812,7 @@ def update_genres_charts(genre):
         ),
     )
     fig_boxplot_duration.update_layout(layout_factory(title="Boxplot: duración"))
+    fig_boxplot_duration.update_traces(patch=trace_patch_factory())
 
     movies_histogram_duration = movies.query("genre==@genre")
     fig_histogram_duration = px.histogram(movies_histogram_duration, x="duration",
@@ -817,6 +830,7 @@ def update_genres_charts(genre):
     )
 
     fig_histogram_duration.update_layout(layout_factory(title=f"Histograma de la duración: {genre}"))
+    fig_histogram_duration.update_traces(patch=trace_patch_factory())
 
     movies_scatter_gross_likes = mov_bak.query("genre == @genre")
     # Graficando la linea de tendencia
@@ -836,6 +850,7 @@ def update_genres_charts(genre):
         )
     )
     fig_scatter_gross_likes.update_layout(layout_factory(title="Diagrama de dispersión: Ingresos vs Likes"))
+    fig_scatter_gross_likes.update_traces(patch=trace_patch_factory())
 
     movies_choropleth_genre = movies_country_merged.query("genre == @genre")
     fig_choropleth = go.Figure(data=go.Choropleth(
@@ -858,7 +873,7 @@ def update_genres_charts(genre):
             showcoastlines=False,
             projection_type='equirectangular'
         ),
-        width=100
+        width=1400
     )
 
     fig_choropleth.update_layout(layout_factory(title=f"Cantidad de películas por país, Género: {genre}"))
@@ -880,6 +895,7 @@ def update_genres_charts(genre):
     )
 
     fig_average_budget_per_genre.update_layout(layout_factory(title=f"Presupuesto promedio por género {genre}"))
+    fig_average_budget_per_genre.update_traces(patch=trace_patch_factory())
 
     movie_facebook_likes_clean_per_genre = movie_facebook_likes_clean.query("genre == @genre")
     fig_likes_votes_per_genre = px.scatter(movie_facebook_likes_clean_per_genre, x="movie_facebook_likes",
@@ -900,6 +916,8 @@ def update_genres_charts(genre):
 
     fig_likes_votes_per_genre.update_layout(
         layout_factory(title=f"Diagrama de dispersión: Votos de IMDB vs Likes de FB, género: {genre}"))
+    fig_likes_votes_per_genre.update_traces(patch=trace_patch_factory())
+
 
     movies_per_genre = movies.query("genre == @genre")
     fig_imdb_score_per_genre = px.histogram(movies_per_genre, x="imdb_score",
@@ -909,20 +927,45 @@ def update_genres_charts(genre):
     fig_imdb_score_per_genre.update_layout(
         layout_factory(title=f"Histograma de calificaciones en IMDB por género: {genre}"))
 
+    fig_imdb_score_per_genre.update_layout(
+        xaxis=dict(title='<b>Calificación en IMDb</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+        yaxis=dict(title='<b>Frecuencia</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+    )
+
     fig_imdb_score_per_genre.update_traces(xbins=dict(  # bins used for histogram
         start=0.0,
         end=10.0,
         size=1
     ))
+    fig_imdb_score_per_genre.update_traces(patch=trace_patch_factory())
 
     number_movies_by_year = movies_per_genre[["title_year"]].sort_values(by=["title_year"]).groupby(["title_year"])
     number_movies_by_year = number_movies_by_year.size().reset_index(name='count')
 
     fig_movies_per_year_per_genre = go.Figure(data=go.Bar(x=number_movies_by_year["title_year"],
-                                                         y=number_movies_by_year["count"]))
+                                                          y=number_movies_by_year["count"]))
+
+    fig_movies_per_year_per_genre.update_layout(
+        xaxis=dict(title='<b>Años</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+        yaxis=dict(title='<b>Frecuencia</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+    )
 
     fig_movies_per_year_per_genre.update_layout(
         layout_factory(title=f"Cantidad de películas por año y por género: {genre}"))
+
+    fig_movies_per_year_per_genre.update_traces(patch=trace_patch_factory())
 
     movies_funnel = movies_per_genre.copy()
     movies_funnel['counts'] = 1
@@ -931,11 +974,44 @@ def update_genres_charts(genre):
     movies_funnel = movies_funnel.sort_values('counts', ascending=False)
     fig_funnel_category_per_genre = px.funnel(movies_funnel, x='counts', y='content_rating')
     fig_funnel_category_per_genre.update_layout(
+        yaxis=dict(title='<b>Categorías</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+    )
+
+    fig_funnel_category_per_genre.update_layout(
         layout_factory(title=f"Embudo según categoría y por género: {genre}"))
+    fig_funnel_category_per_genre.update_traces(patch=trace_patch_factory())
 
     return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, \
            fig_choropleth, fig_average_budget_per_genre, fig_likes_votes_per_genre, fig_imdb_score_per_genre, \
-           fig_movies_per_year_per_genre,fig_funnel_category_per_genre
+           fig_movies_per_year_per_genre, fig_funnel_category_per_genre
+
+
+@app.callback(Output('gross_per_category_per_genre', 'figure'), Input('dropdown_genres', 'value'), \
+              Input('dropdown_categories', 'value'))
+def update_genres_charts(genre, content_rating):
+    movies_per_genre = movies.query("genre == @genre")
+    movies_per_genre_per_category = movies_per_genre.query("content_rating == @content_rating")
+    fig_gross_per_category_per_genre = px.bar(movies_per_genre_per_category, x="title_year", y="gross",
+                                              title="Distribución de ingresos por categoría a lo largo del tiempo"
+                                              , hover_name="movie_title")
+    fig_gross_per_category_per_genre.update_layout(
+        layout_factory(title=f"Ingresos por categoría a lo largo del tiempo: {genre}"))
+
+    fig_gross_per_category_per_genre.update_layout(
+        xaxis=dict(title='<b>Años</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+        yaxis=dict(title='<b>Ingresos totales</b>',
+                   color='white',
+                   showline=True,
+                   showgrid=True),
+    )
+    fig_gross_per_category_per_genre.update_traces(patch=trace_patch_factory())
+    return fig_gross_per_category_per_genre
 
 
 @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
