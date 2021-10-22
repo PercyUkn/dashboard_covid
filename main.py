@@ -12,18 +12,18 @@ import pandas as pd
 import plotly.express as px
 import math
 
-url_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
-             "/csse_covid_19_time_series/time_series_covid19_deaths_global.csv "
-url_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
-                "/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv "
-url_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
-                "/csse_covid_19_time_series/time_series_covid19_recovered_global.csv "
+# url_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
+#              "/csse_covid_19_time_series/time_series_covid19_deaths_global.csv "
+# url_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
+#                 "/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv "
+# url_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data" \
+#                 "/csse_covid_19_time_series/time_series_covid19_recovered_global.csv "
 
 #### DATOS
 ########################################################################################################################
-confirmed = pd.read_csv(url_confirmed)
-deaths = pd.read_csv(url_deaths)
-recovered = pd.read_csv(url_recovered)
+# confirmed = pd.read_csv(url_confirmed)
+# deaths = pd.read_csv(url_deaths)
+# recovered = pd.read_csv(url_recovered)
 
 # Data full movies
 data = pd.read_csv("data/IMDB_Movies.csv")
@@ -177,43 +177,43 @@ fig_gross_likes.update_layout(
 ########################################################################################################################
 
 
-# confirmed unpivot
-columnas_quedan = confirmed.columns[:4]
-date1 = confirmed.columns[4:]
-total_confirmed = confirmed.melt(id_vars=columnas_quedan, value_vars=date1, var_name="date", value_name="confirmed")
-# deaths unpivot
-columnas_quedan2 = deaths.columns[:4]
-date2 = deaths.columns[4:]
-total_deaths = deaths.melt(id_vars=columnas_quedan2, value_vars=date2, var_name="date", value_name="death")
-# recovered unpivot
-columnas_quedan3 = recovered.columns[:4]
-date3 = recovered.columns[4:]
-total_recovered = recovered.melt(id_vars=columnas_quedan3, value_vars=date3, var_name="date", value_name="recovered")
-
-# Combinando todos los datos
-covid_data = total_confirmed.merge(right=total_recovered, how="left",
-                                   on=['Province/State', 'Country/Region', 'Lat', 'Long', 'date'])
-covid_data = covid_data.merge(right=total_deaths, how="left",
-                              on=['Province/State', 'Country/Region', 'Lat', 'Long', 'date'])
-# Convirtiendo la fecha de string a datetime
-covid_data["date"] = pd.to_datetime(covid_data["date"])
-
-# Llenando con valores los na
-covid_data["recovered"] = covid_data["recovered"].fillna(0)
-# Convertir de float a int
-covid_data["recovered"] = covid_data["recovered"].astype(int)
-
-# Calculando los casos activos
-covid_data["active"] = covid_data["confirmed"] - covid_data["recovered"] - covid_data["death"]
-
-# Calculando los confirmados, recuperados y muertos actualmente
-covid_data1 = covid_data.groupby("date")[["date", "confirmed", "recovered", "death", "active"]].sum().reset_index()
-
-countries = list(covid_data["Country/Region"].sort_values().unique())
-
-# Agrupando por país y fecha, para los KPI's por país
-covid_data2 = covid_data.groupby(["date", "Country/Region"])[
-    ["confirmed", "recovered", "death", "active"]].sum().reset_index()
+# # confirmed unpivot
+# columnas_quedan = confirmed.columns[:4]
+# date1 = confirmed.columns[4:]
+# total_confirmed = confirmed.melt(id_vars=columnas_quedan, value_vars=date1, var_name="date", value_name="confirmed")
+# # deaths unpivot
+# columnas_quedan2 = deaths.columns[:4]
+# date2 = deaths.columns[4:]
+# total_deaths = deaths.melt(id_vars=columnas_quedan2, value_vars=date2, var_name="date", value_name="death")
+# # recovered unpivot
+# columnas_quedan3 = recovered.columns[:4]
+# date3 = recovered.columns[4:]
+# total_recovered = recovered.melt(id_vars=columnas_quedan3, value_vars=date3, var_name="date", value_name="recovered")
+#
+# # Combinando todos los datos
+# covid_data = total_confirmed.merge(right=total_recovered, how="left",
+#                                    on=['Province/State', 'Country/Region', 'Lat', 'Long', 'date'])
+# covid_data = covid_data.merge(right=total_deaths, how="left",
+#                               on=['Province/State', 'Country/Region', 'Lat', 'Long', 'date'])
+# # Convirtiendo la fecha de string a datetime
+# covid_data["date"] = pd.to_datetime(covid_data["date"])
+#
+# # Llenando con valores los na
+# covid_data["recovered"] = covid_data["recovered"].fillna(0)
+# # Convertir de float a int
+# covid_data["recovered"] = covid_data["recovered"].astype(int)
+#
+# # Calculando los casos activos
+# covid_data["active"] = covid_data["confirmed"] - covid_data["recovered"] - covid_data["death"]
+#
+# # Calculando los confirmados, recuperados y muertos actualmente
+# covid_data1 = covid_data.groupby("date")[["date", "confirmed", "recovered", "death", "active"]].sum().reset_index()
+#
+# countries = list(covid_data["Country/Region"].sort_values().unique())
+#
+# # Agrupando por país y fecha, para los KPI's por país
+# covid_data2 = covid_data.groupby(["date", "Country/Region"])[
+#     ["confirmed", "recovered", "death", "active"]].sum().reset_index()
 
 
 ########################################################################################################################
@@ -405,7 +405,46 @@ app.layout = html.Div(children=[
         ], className="card_container twelve columns"),
     ], className="row flex display"),
 
-    # Quinta fila - Presupuesto promedio anual por género y Likes vs Votos en IMDb
+    # Quinta fila - Slider - Cantidad de películas por país
+    html.Div([
+        html.Div([
+            html.P('Seleccionar cantidad de países con mayor cantidad de películas: ', className="fix-label",
+                   style={'color': 'white'}),
+            dcc.Slider(
+                min=1,
+                max=10,
+                step=1,
+                value=5,
+                tooltip={"placement": "bottom", "always_visible": True},
+                id="top_countries_slider"
+                # className="dcc-compon",
+            )
+        ], className="create-container twelve columns")
+    ], className="row flex display"),
+
+    # Sexta fila - Gráficos en 3D
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="3d_score_budget_country")
+        ], className="card_container six columns"),
+
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="3d_score_likes_country"),
+        ], className="card_container six columns"),
+
+    ], className="row flex display"),
+
+    # Septima  fila - Dona
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="pie_movies_country")
+        ], className="card_container six columns"),
+    ], className="row flex display"),
+
+    # Octava fila - Presupuesto promedio anual por género y Likes vs Votos en IMDb
     html.Div([
         html.Div([
             dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
@@ -419,7 +458,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Sexta fila - Calificaciones por IMDb por género y # de películas por año
+    # Novena fila - Calificaciones por IMDb por género y # de películas por año
     html.Div([
         html.Div([
             dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
@@ -433,7 +472,7 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Séptima fila - Embudo de contenido por género, dropdown de categorías y categoría más rentable por categoría y
+    # Décima fila - Embudo de contenido por género, dropdown de categorías y categoría más rentable por categoría y
     # por género
     html.Div([
         html.Div([
@@ -462,142 +501,142 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
-    # Octava fila
-    html.Div([
-        html.Div([
-            html.H6(children='Global cases',
-                    style={'textAlign': "center",
-                           "color": "white",
-                           "fontSize": 30}
-                    ),
-            html.P(f"{covid_data1['confirmed'].iloc[-1]:,.0f}",
-                   style={'textAlign': "center",
-                          "color": "orange",
-                          "fontSize": 40}
-                   ),
-            html.P(children='new: ' + f'{covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2]:,.0f}' +
-                            " (" + str(round(((covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2])
-                                              / covid_data1["confirmed"].iloc[-2]) * 100, 2)) + "%)",
-                   style={
-                       'textAlign': 'center',
-                       'color': 'orange',
-                       'fontSize': 18,
-                       'marginTop': '-10px'
-                   }
-                   )
-        ], className="card_container three columns"),
-
-        html.Div([
-            html.H6(children='Global deaths',
-                    style={'textAlign': "center",
-                           "color": "white",
-                           "fontSize": 30}
-                    ),
-            html.P(f"{covid_data1['confirmed'].iloc[-1]:,.0f}",
-                   style={'textAlign': "center",
-                          "color": "red",
-                          "fontSize": 40}
-                   ),
-            html.P('new: ' + f'{covid_data1["death"].iloc[-1] - covid_data1["death"].iloc[-2]:,.0f}' +
-                   " (" + str(
-                calcula_porcentaje(val1=covid_data1["death"].iloc[-1], val2=covid_data1["death"].iloc[-2])) + "%)",
-                   style={
-                       'textAlign': 'center',
-                       'color': 'red',
-                       'fontSize': 18,
-                       'marginTop': '-10px'
-                   }
-                   )
-        ], className="card_container three columns"),
-
-        html.Div([
-            html.H6(children='Global recovered',
-                    style={'textAlign': "center",
-                           "color": "white",
-                           "fontSize": 30}
-                    ),
-            html.P(f"{covid_data1['recovered'].iloc[-1]:,.0f}",
-                   style={'textAlign': "center",
-                          "color": "green",
-                          "fontSize": 40}
-                   ),
-            html.P('new: ' + f'{covid_data1["recovered"].iloc[-1] - covid_data1["recovered"].iloc[-2]:,.0f}' +
-                   " (" + str(calcula_porcentaje(val1=covid_data1["recovered"].iloc[-1],
-                                                 val2=covid_data1["recovered"].iloc[-2])) + "%)",
-                   style={
-                       'textAlign': 'center',
-                       'color': 'green',
-                       'fontSize': 18,
-                       'marginTop': '-10px'
-                   }
-                   )
-        ], className="card_container three columns"),
-
-        html.Div([
-            html.H6(children='Global active',
-                    style={'textAlign': "center",
-                           "color": "white",
-                           "fontSize": 30}
-                    ),
-            html.P(f"{covid_data1['active'].iloc[-1]:,.0f}",
-                   style={'textAlign': "center",
-                          "color": "yellow",
-                          "fontSize": 40}
-                   ),
-            html.P('new: ' + f'{covid_data1["active"].iloc[-1] - covid_data1["active"].iloc[-2]:,.0f}' +
-                   " (" + str(
-                calcula_porcentaje(val1=covid_data1["active"].iloc[-1], val2=covid_data1["active"].iloc[-2])) + "%)",
-                   style={
-                       'textAlign': 'center',
-                       'color': 'yellow',
-                       'fontSize': 18,
-                       'marginTop': '-10px'
-                   }
-                   )
-        ], className="card_container three columns")
-
-    ], className="row flex display"),
-
-    # Novena fila
-    html.Div([
-        # Dropdown + 4 KPI's por país
-        html.Div([
-            html.P('Select country: ', className="fix-label", style={'color': 'white'}),
-            dcc.Dropdown(id="w_countries",
-                         multi=False,
-                         searchable=True,
-                         value='Peru',
-                         placeholder='Select Country',
-                         options=[{'label': c, 'value': c} for c in countries],  # Lista de diccionarios con los paises
-                         className="dcc-compon",
-                         clearable=False
-                         ),
-            html.P('New Cases: ' + str(covid_data["date"].iloc[-1].strftime("%d/%m/%y")),
-                   style={'textAlign': "center",
-                          "color": "white",
-                          "fontSize": 25}
-                   ),
-            dcc.Graph(id="confirmed", config={'displayModeBar': False}, className="dcc-compon",
-                      style={'marginTop': '20px'}),
-            dcc.Graph(id="death", config={'displayModeBar': False}, className="dcc-compon",
-                      style={'marginTop': '20px'}),
-            dcc.Graph(id="recovered", config={'displayModeBar': False}, className="dcc-compon",
-                      style={'marginTop': '20px'}),
-            dcc.Graph(id="active", config={'displayModeBar': False}, className="dcc-compon",
-                      style={'marginTop': '20px'})
-        ], className="create-container three columns"),
-
-        # Donut chart con Confirmados = Activos + Muertos + Recuperados (por país)
-        html.Div(children=[
-            dcc.Graph(id="donut_chart", className="dcc-compon", config={'displayModeBar': 'hover'})
-        ], className="create-container four columns"),
-
-        # Line Chart (30 días de incremento, y en barra los totales)
-        html.Div(children=[
-            dcc.Graph(id="line_chart", className="dcc-compon", config={'displayModeBar': 'hover'})
-        ], className="create-container five columns")
-
-    ], className="row flex display")
+    # # Undécima fila
+    # html.Div([
+    #     html.Div([
+    #         html.H6(children='Global cases',
+    #                 style={'textAlign': "center",
+    #                        "color": "white",
+    #                        "fontSize": 30}
+    #                 ),
+    #         html.P(f"{covid_data1['confirmed'].iloc[-1]:,.0f}",
+    #                style={'textAlign': "center",
+    #                       "color": "orange",
+    #                       "fontSize": 40}
+    #                ),
+    #         html.P(children='new: ' + f'{covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2]:,.0f}' +
+    #                         " (" + str(round(((covid_data1["confirmed"].iloc[-1] - covid_data1["confirmed"].iloc[-2])
+    #                                           / covid_data1["confirmed"].iloc[-2]) * 100, 2)) + "%)",
+    #                style={
+    #                    'textAlign': 'center',
+    #                    'color': 'orange',
+    #                    'fontSize': 18,
+    #                    'marginTop': '-10px'
+    #                }
+    #                )
+    #     ], className="card_container three columns"),
+    #
+    #     html.Div([
+    #         html.H6(children='Global deaths',
+    #                 style={'textAlign': "center",
+    #                        "color": "white",
+    #                        "fontSize": 30}
+    #                 ),
+    #         html.P(f"{covid_data1['confirmed'].iloc[-1]:,.0f}",
+    #                style={'textAlign': "center",
+    #                       "color": "red",
+    #                       "fontSize": 40}
+    #                ),
+    #         html.P('new: ' + f'{covid_data1["death"].iloc[-1] - covid_data1["death"].iloc[-2]:,.0f}' +
+    #                " (" + str(
+    #             calcula_porcentaje(val1=covid_data1["death"].iloc[-1], val2=covid_data1["death"].iloc[-2])) + "%)",
+    #                style={
+    #                    'textAlign': 'center',
+    #                    'color': 'red',
+    #                    'fontSize': 18,
+    #                    'marginTop': '-10px'
+    #                }
+    #                )
+    #     ], className="card_container three columns"),
+    #
+    #     html.Div([
+    #         html.H6(children='Global recovered',
+    #                 style={'textAlign': "center",
+    #                        "color": "white",
+    #                        "fontSize": 30}
+    #                 ),
+    #         html.P(f"{covid_data1['recovered'].iloc[-1]:,.0f}",
+    #                style={'textAlign': "center",
+    #                       "color": "green",
+    #                       "fontSize": 40}
+    #                ),
+    #         html.P('new: ' + f'{covid_data1["recovered"].iloc[-1] - covid_data1["recovered"].iloc[-2]:,.0f}' +
+    #                " (" + str(calcula_porcentaje(val1=covid_data1["recovered"].iloc[-1],
+    #                                              val2=covid_data1["recovered"].iloc[-2])) + "%)",
+    #                style={
+    #                    'textAlign': 'center',
+    #                    'color': 'green',
+    #                    'fontSize': 18,
+    #                    'marginTop': '-10px'
+    #                }
+    #                )
+    #     ], className="card_container three columns"),
+    #
+    #     html.Div([
+    #         html.H6(children='Global active',
+    #                 style={'textAlign': "center",
+    #                        "color": "white",
+    #                        "fontSize": 30}
+    #                 ),
+    #         html.P(f"{covid_data1['active'].iloc[-1]:,.0f}",
+    #                style={'textAlign': "center",
+    #                       "color": "yellow",
+    #                       "fontSize": 40}
+    #                ),
+    #         html.P('new: ' + f'{covid_data1["active"].iloc[-1] - covid_data1["active"].iloc[-2]:,.0f}' +
+    #                " (" + str(
+    #             calcula_porcentaje(val1=covid_data1["active"].iloc[-1], val2=covid_data1["active"].iloc[-2])) + "%)",
+    #                style={
+    #                    'textAlign': 'center',
+    #                    'color': 'yellow',
+    #                    'fontSize': 18,
+    #                    'marginTop': '-10px'
+    #                }
+    #                )
+    #     ], className="card_container three columns")
+    #
+    # ], className="row flex display"),
+    #
+    # # Décima fila
+    # html.Div([
+    #     # Dropdown + 4 KPI's por país
+    #     html.Div([
+    #         html.P('Select country: ', className="fix-label", style={'color': 'white'}),
+    #         dcc.Dropdown(id="w_countries",
+    #                      multi=False,
+    #                      searchable=True,
+    #                      value='Peru',
+    #                      placeholder='Select Country',
+    #                      options=[{'label': c, 'value': c} for c in countries],  # Lista de diccionarios con los paises
+    #                      className="dcc-compon",
+    #                      clearable=False
+    #                      ),
+    #         html.P('New Cases: ' + str(covid_data["date"].iloc[-1].strftime("%d/%m/%y")),
+    #                style={'textAlign': "center",
+    #                       "color": "white",
+    #                       "fontSize": 25}
+    #                ),
+    #         dcc.Graph(id="confirmed", config={'displayModeBar': False}, className="dcc-compon",
+    #                   style={'marginTop': '20px'}),
+    #         dcc.Graph(id="death", config={'displayModeBar': False}, className="dcc-compon",
+    #                   style={'marginTop': '20px'}),
+    #         dcc.Graph(id="recovered", config={'displayModeBar': False}, className="dcc-compon",
+    #                   style={'marginTop': '20px'}),
+    #         dcc.Graph(id="active", config={'displayModeBar': False}, className="dcc-compon",
+    #                   style={'marginTop': '20px'})
+    #     ], className="create-container three columns"),
+    #
+    #     # Donut chart con Confirmados = Activos + Muertos + Recuperados (por país)
+    #     html.Div(children=[
+    #         dcc.Graph(id="donut_chart", className="dcc-compon", config={'displayModeBar': 'hover'})
+    #     ], className="create-container four columns"),
+    #
+    #     # Line Chart (30 días de incremento, y en barra los totales)
+    #     html.Div(children=[
+    #         dcc.Graph(id="line_chart", className="dcc-compon", config={'displayModeBar': 'hover'})
+    #     ], className="create-container five columns")
+    #
+    # ], className="row flex display")
 
 ], id="mainContainer", style={'display': 'flex', 'flexDirection': 'column'})
 
@@ -774,7 +813,7 @@ def update_movies_kpi(movie_title):
               Output('choropleth', 'figure'), Output('average_budget_per_genre', 'figure'),
               Output('likes_votes_per_genre', 'figure'), Output("imdb_score_per_genre", "figure"),
               Output('movies_per_year_per_genre', 'figure'), Output('funnel_category_per_genre', 'figure'),
-              Input('dropdown_genres', 'value'))
+              Output('top_countries_slider', 'max'), Input('dropdown_genres', 'value'))
 def update_genres_charts(genre):
     movies_gross_budget_per_genre = movies_budget_clean.query("genre == @genre")
     fig_scatter_gross_budget = px.scatter(movies_gross_budget_per_genre, x='budget', y='gross', symbol='genre',
@@ -918,7 +957,6 @@ def update_genres_charts(genre):
         layout_factory(title=f"Diagrama de dispersión: Votos de IMDB vs Likes de FB, género: {genre}"))
     fig_likes_votes_per_genre.update_traces(patch=trace_patch_factory())
 
-
     movies_per_genre = movies.query("genre == @genre")
     fig_imdb_score_per_genre = px.histogram(movies_per_genre, x="imdb_score",
                                             title='Distribución de calificaciones de IMDB por género',
@@ -982,11 +1020,124 @@ def update_genres_charts(genre):
 
     fig_funnel_category_per_genre.update_layout(
         layout_factory(title=f"Embudo según categoría y por género: {genre}"))
+
     fig_funnel_category_per_genre.update_traces(patch=trace_patch_factory())
+
+    movies_per_genre_bak = movies.query("genre == @genre")
+    movies_per_genre_bak = movies_per_genre_bak.groupby("country")
+    movies_per_genre_bak = movies_per_genre_bak.size().reset_index(name='count')
+    top_countries_slider = len(movies_per_genre_bak)
 
     return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, \
            fig_choropleth, fig_average_budget_per_genre, fig_likes_votes_per_genre, fig_imdb_score_per_genre, \
-           fig_movies_per_year_per_genre, fig_funnel_category_per_genre
+           fig_movies_per_year_per_genre, fig_funnel_category_per_genre, top_countries_slider
+
+
+@app.callback(Output('3d_score_budget_country', 'figure'), Output('3d_score_likes_country','figure'),
+              Output('pie_movies_country','figure'),Input('dropdown_genres', 'value'),
+              Input('top_countries_slider', 'value'))
+def update_3d_charts(genre, top_countries_slider_n):
+    movies_per_genre_bak = movies.query("genre == @genre")
+    movies_per_genre_bak = movies_per_genre_bak.groupby("country")
+    movies_per_genre_bak = movies_per_genre_bak.size().reset_index(name='count')
+    movies_per_genre_bak = movies_per_genre_bak.sort_values(by="count", ascending=False).iloc[:top_countries_slider_n, :]
+    list_of_countries = list(movies_per_genre_bak["country"])
+    movies_per_genre = movies.query("genre == @genre")
+    movies_per_genre = movies_per_genre[movies_per_genre["country"].isin(list_of_countries)]
+    fig_3d_country_budget_gross = go.Figure(data=[go.Mesh3d(x=(movies_per_genre['country']),
+                                    y=(movies_per_genre['budget']),
+                                    z=(movies_per_genre['gross']),
+                                    opacity=0.5, )])
+
+    # xaxis.backgroundcolor is used to set background color
+    fig_3d_country_budget_gross.update_layout(scene=dict(
+        xaxis=dict(
+            backgroundcolor="rgb(200, 200, 230)",
+            gridcolor="white",
+            showbackground=True,
+            zerolinecolor="white", ),
+        yaxis=dict(
+            backgroundcolor="rgb(230, 200,230)",
+            gridcolor="white",
+            showbackground=True,
+            zerolinecolor="white"),
+        zaxis=dict(
+            backgroundcolor="rgb(230, 230,200)",
+            gridcolor="white",
+            showbackground=True,
+            zerolinecolor="white", ), ),
+        width=700,
+        margin=dict(
+            r=10, l=10,
+            b=10, t=10)
+    )
+
+    fig_3d_country_budget_gross.update_layout(scene=dict(
+        xaxis_title='Paises',
+        yaxis_title='Presupuesto',
+        zaxis_title='Ingreso'),
+        #width=700,
+        margin=dict(r=20, b=10, l=10, t=10))
+
+    fig_3d_country_budget_gross.update_layout(layout_factory(title=f"Ingeso vs Presupuesto vs País: {genre} y {top_countries_slider_n} países 'top'"))
+
+    fig_3d_score_likes_country = go.Figure(data=[go.Mesh3d(x=(movies_per_genre['country']),
+                                                            y=(movies_per_genre['movie_facebook_likes']),
+                                                            z=(movies_per_genre['imdb_score']),
+                                                            opacity=0.5, )])
+
+    # xaxis.backgroundcolor is used to set background color
+    fig_3d_score_likes_country.update_layout(scene=dict(
+        xaxis=dict(
+            backgroundcolor="rgb(200, 200, 230)",
+            gridcolor="white",
+            showbackground=True,
+            zerolinecolor="white", ),
+        yaxis=dict(
+            backgroundcolor="rgb(230, 200,230)",
+            gridcolor="white",
+            showbackground=True,
+            zerolinecolor="white"),
+        zaxis=dict(
+            backgroundcolor="rgb(230, 230,200)",
+            gridcolor="white",
+            showbackground=True,
+            zerolinecolor="white", ), ),
+        width=700,
+        margin=dict(
+            r=10, l=10,
+            b=10, t=10)
+    )
+
+    fig_3d_score_likes_country.update_layout(scene=dict(
+        xaxis_title='Paises',
+        yaxis_title='Likes',
+        zaxis_title='IMDb Score'),
+        # width=700,
+        margin=dict(r=20, b=10, l=10, t=10))
+
+    fig_3d_score_likes_country.update_layout(
+        layout_factory(title=f"IMDb score vs Likes vs País: {genre} y {top_countries_slider_n} países 'top'"))
+
+    movies_per_genre_bak_1 = movies.query("genre == @genre")
+    movies_per_genre_bak_1 = movies_per_genre_bak_1.groupby("country")
+    movies_per_genre_bak_1 = movies_per_genre_bak_1.size().reset_index(name='count')
+    movies_per_genre_bak_1 = movies_per_genre_bak_1.sort_values(by="count", ascending=False).iloc[:top_countries_slider_n, :]
+    df = movies_per_genre_bak_1
+    df.loc[df['count'] < 3, 'country'] = 'Otros Paises'  # Represent only large countries
+    fig_pie_movies_country = px.pie(df, values='count', names='country', title='Porcentaje por Genero ' + genre, hole=.4)
+    fig_pie_movies_country.update_layout(
+        layout_factory(title=f"Porcentaje de películas por países: {genre} y {top_countries_slider_n} países 'top'"))
+
+    fig_pie_movies_country.update_layout(legend=dict(
+        yanchor="top",
+        y=0.0,
+        xanchor="left",
+        x=0.0
+    ))
+
+
+    return fig_3d_country_budget_gross, fig_3d_score_likes_country, fig_pie_movies_country
 
 
 @app.callback(Output('gross_per_category_per_genre', 'figure'), Input('dropdown_genres', 'value'), \
@@ -1014,266 +1165,266 @@ def update_genres_charts(genre, content_rating):
     return fig_gross_per_category_per_genre
 
 
-@app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
-              Output('active', 'figure'), Output(component_id="donut_chart", component_property="figure"),
-              Output('line_chart', 'figure'), [Input('w_countries', 'value')])
-def update_confirmed(w_country):
-    value_confirmed = covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-1] - \
-                      covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-2]
-    delta_confirmed = covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-2] - \
-                      covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-3]
-
-    value_death = covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-1] - \
-                  covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-2]
-    delta_death = covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-2] - \
-                  covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-3]
-
-    value_recovered = covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-1] - \
-                      covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-2]
-    delta_recovered = covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-2] - \
-                      covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-3]
-
-    value_active = covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-1] - \
-                   covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-2]
-    delta_active = covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-2] - \
-                   covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-3]
-
-    figs = []
-    fig_confirmed = go.Figure(
-        data=go.Indicator(
-            mode="number+delta",
-            value=value_confirmed,
-            delta=dict(
-                position="right",
-                reference=delta_confirmed,
-                valueformat='.0f',
-                relative=False,
-                font={'size': 20}),
-            number=dict(
-                valueformat=',',
-                font={'size': 25}),
-            domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
-        ),
-        layout=go.Layout(
-            title={
-                'text': 'New confirmed',
-                'y': 0.9,
-                'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': {'size': 25},
-                'pad': {'b': 20}
-            },
-            font=dict(color='orange'),
-            paper_bgcolor='#1f2c56',
-            plot_bgcolor='#1f2c56',
-            height=100,
-        )
-
-    )
-
-    fig_death = go.Figure(
-        data=go.Indicator(
-            mode="number+delta",
-            value=value_death,
-            delta=dict(
-                position="right",
-                reference=delta_death,
-                valueformat='.0f',
-                relative=False,
-                font={'size': 20}),
-            number=dict(
-                valueformat=',',
-                font={'size': 25}),
-            domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
-        ),
-        layout=go.Layout(
-            title={
-                'text': 'New deaths',
-                'y': 0.9,
-                'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': {'size': 25},
-                'pad': {'b': 20}
-            },
-            font=dict(color='red'),
-            paper_bgcolor='#1f2c56',
-            plot_bgcolor='#1f2c56',
-            height=100,
-        )
-
-    )
-
-    fig_recovered = go.Figure(
-        data=go.Indicator(
-            mode="number+delta",
-            value=value_recovered,
-            delta=dict(
-                position="right",
-                reference=delta_recovered,
-                valueformat='.0f',
-                relative=False,
-                font={'size': 20}),
-            number=dict(
-                valueformat=',',
-                font={'size': 25}),
-            domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
-        ),
-        layout=go.Layout(
-            title={
-                'text': 'New recovered',
-                'y': 0.9,
-                'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': {'size': 25},
-                'pad': {'b': 20}
-            },
-            font=dict(color='green'),
-            paper_bgcolor='#1f2c56',
-            plot_bgcolor='#1f2c56',
-            height=100,
-        )
-
-    )
-
-    fig_active = go.Figure(
-        data=go.Indicator(
-            mode="number+delta",
-            value=value_active,
-            delta=dict(
-                position="right",
-                reference=delta_active,
-                valueformat='.0f',
-                relative=False,
-                font={'size': 20}),
-            number=dict(
-                valueformat=',',
-                font={'size': 25}),
-            domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
-        ),
-        layout=go.Layout(
-            title={
-                'text': 'New active',
-                'y': 0.9,
-                'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': {'size': 25},
-                'pad': {'b': 20}
-            },
-            font=dict(color='yellow'),
-            paper_bgcolor='#1f2c56',
-            plot_bgcolor='#1f2c56',
-            height=100,
-        )
-
-    )
-
-    figs.append([fig_confirmed, fig_death, fig_recovered])
-
-    confirmed = covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-1]
-    death = covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-1]
-    recovered = covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-1]
-    active = covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-1]
-    values = [active, recovered, death]
-    dict_pasa = {}
-    for i, v in enumerate(values):
-        if v != 0:
-            if i == 0:
-                dict_pasa["Actives"] = (values[i], "yellow")
-            if i == 1:
-                dict_pasa["Recovered"] = (values[i], "green")
-            if i == 2:
-                dict_pasa["Death"] = (values[i], "red")
-    labels = list(dict_pasa.keys())
-    values = []
-    colors = []
-    for v, c in dict_pasa.values():
-        values.append(v)
-        colors.append(c)
-
-    fig_donut = go.Figure(
-        data=go.Pie(
-            labels=labels,
-            values=values,
-            hoverinfo='label+value+percent',
-            marker=dict(colors=colors),
-            textinfo='label+value',
-            hole=.7,
-            rotation=90,
-            # insidetextorientation='radial'
-        ),
-        layout=go.Layout(
-            title={'text': f'Confirmed Cases: {confirmed}',
-                   'y': 0.92,
-                   'x': 0.5,
-                   'xanchor': 'center',
-                   'yanchor': 'top'},
-            font=dict(color='white'),
-            hovermode='closest',
-            margin=dict(r=0),
-            titlefont={'color': 'white', 'size': 20},
-            paper_bgcolor='#1f2c56',
-            plot_bgcolor='#1f2c56',
-            legend={
-                'orientation': 'v',
-                'bgcolor': '#1f2c56',
-                'xanchor': 'center',
-                'x': 0.5,
-                'y': -0.5
-            }
-        )
-    )
-
-    covid_data3 = covid_data2[covid_data2["Country/Region"] == w_country][["Country/Region", "date", "confirmed"]]
-    # Usando shift para desplazar una fila
-    covid_data3["daily increase"] = covid_data3["confirmed"] - covid_data3["confirmed"].shift(1)
-
-    fig_line = go.Figure(
-        data=go.Bar(
-            x=covid_data3['date'].tail(30),
-            y=covid_data3['daily increase'].tail(30),
-            name='Daily Confirmed Cases',
-            marker=dict(color='orange'),
-            hoverinfo='text',
-            hovertext=
-            '<b>Date</b>' + covid_data3['date'].tail(30).astype(str) + '<br>' +
-            '<b>Daily Confirmed Cases</b>' + [f'{x:0f}' for x in covid_data3['daily increase'].tail(30)] + '<br>' +
-            '<b>Country</b>' + covid_data3['Country/Region'].tail(30).astype(str) + '<br>'
-        ),
-        layout=go.Layout(
-            title={'text': f'Last Daily Confirmed Cases',
-                   'y': 0.92,
-                   'x': 0.5,
-                   'xanchor': 'center',
-                   'yanchor': 'top'},
-            font=dict(color='white'),
-            hovermode='closest',
-            titlefont={'color': 'white', 'size': 20},
-            paper_bgcolor='#1f2c56',
-            plot_bgcolor='#1f2c56',
-            legend={
-                'orientation': 'v',
-                'bgcolor': '#1f2c56',
-                'xanchor': 'center',
-                'x': 0.5,
-                'y': -0.5
-            },
-            margin=dict(r=1),
-            xaxis=dict(title='<b>Date</b>',
-                       color='white',
-                       showline=True,
-                       showgrid=True),
-            yaxis=dict(title='<b>Daily Confirmed Cases</b>',
-                       color='white',
-                       showline=True,
-                       showgrid=True),
-        ),
-    )
-
-    return fig_confirmed, fig_death, fig_recovered, fig_active, fig_donut, fig_line
+# @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
+#               Output('active', 'figure'), Output(component_id="donut_chart", component_property="figure"),
+#               Output('line_chart', 'figure'), [Input('w_countries', 'value')])
+# def update_confirmed(w_country):
+#     value_confirmed = covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-1] - \
+#                       covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-2]
+#     delta_confirmed = covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-2] - \
+#                       covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-3]
+#
+#     value_death = covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-1] - \
+#                   covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-2]
+#     delta_death = covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-2] - \
+#                   covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-3]
+#
+#     value_recovered = covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-1] - \
+#                       covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-2]
+#     delta_recovered = covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-2] - \
+#                       covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-3]
+#
+#     value_active = covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-1] - \
+#                    covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-2]
+#     delta_active = covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-2] - \
+#                    covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-3]
+#
+#     figs = []
+#     fig_confirmed = go.Figure(
+#         data=go.Indicator(
+#             mode="number+delta",
+#             value=value_confirmed,
+#             delta=dict(
+#                 position="right",
+#                 reference=delta_confirmed,
+#                 valueformat='.0f',
+#                 relative=False,
+#                 font={'size': 20}),
+#             number=dict(
+#                 valueformat=',',
+#                 font={'size': 25}),
+#             domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
+#         ),
+#         layout=go.Layout(
+#             title={
+#                 'text': 'New confirmed',
+#                 'y': 0.9,
+#                 'x': 0.5,
+#                 'xanchor': 'center',
+#                 'yanchor': 'top',
+#                 'font': {'size': 25},
+#                 'pad': {'b': 20}
+#             },
+#             font=dict(color='orange'),
+#             paper_bgcolor='#1f2c56',
+#             plot_bgcolor='#1f2c56',
+#             height=100,
+#         )
+#
+#     )
+#
+#     fig_death = go.Figure(
+#         data=go.Indicator(
+#             mode="number+delta",
+#             value=value_death,
+#             delta=dict(
+#                 position="right",
+#                 reference=delta_death,
+#                 valueformat='.0f',
+#                 relative=False,
+#                 font={'size': 20}),
+#             number=dict(
+#                 valueformat=',',
+#                 font={'size': 25}),
+#             domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
+#         ),
+#         layout=go.Layout(
+#             title={
+#                 'text': 'New deaths',
+#                 'y': 0.9,
+#                 'x': 0.5,
+#                 'xanchor': 'center',
+#                 'yanchor': 'top',
+#                 'font': {'size': 25},
+#                 'pad': {'b': 20}
+#             },
+#             font=dict(color='red'),
+#             paper_bgcolor='#1f2c56',
+#             plot_bgcolor='#1f2c56',
+#             height=100,
+#         )
+#
+#     )
+#
+#     fig_recovered = go.Figure(
+#         data=go.Indicator(
+#             mode="number+delta",
+#             value=value_recovered,
+#             delta=dict(
+#                 position="right",
+#                 reference=delta_recovered,
+#                 valueformat='.0f',
+#                 relative=False,
+#                 font={'size': 20}),
+#             number=dict(
+#                 valueformat=',',
+#                 font={'size': 25}),
+#             domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
+#         ),
+#         layout=go.Layout(
+#             title={
+#                 'text': 'New recovered',
+#                 'y': 0.9,
+#                 'x': 0.5,
+#                 'xanchor': 'center',
+#                 'yanchor': 'top',
+#                 'font': {'size': 25},
+#                 'pad': {'b': 20}
+#             },
+#             font=dict(color='green'),
+#             paper_bgcolor='#1f2c56',
+#             plot_bgcolor='#1f2c56',
+#             height=100,
+#         )
+#
+#     )
+#
+#     fig_active = go.Figure(
+#         data=go.Indicator(
+#             mode="number+delta",
+#             value=value_active,
+#             delta=dict(
+#                 position="right",
+#                 reference=delta_active,
+#                 valueformat='.0f',
+#                 relative=False,
+#                 font={'size': 20}),
+#             number=dict(
+#                 valueformat=',',
+#                 font={'size': 25}),
+#             domain={'y': [0, 1], 'x': [0, 1]}  ### Se relaciona con la posición de los valores delta y value
+#         ),
+#         layout=go.Layout(
+#             title={
+#                 'text': 'New active',
+#                 'y': 0.9,
+#                 'x': 0.5,
+#                 'xanchor': 'center',
+#                 'yanchor': 'top',
+#                 'font': {'size': 25},
+#                 'pad': {'b': 20}
+#             },
+#             font=dict(color='yellow'),
+#             paper_bgcolor='#1f2c56',
+#             plot_bgcolor='#1f2c56',
+#             height=100,
+#         )
+#
+#     )
+#
+#     figs.append([fig_confirmed, fig_death, fig_recovered])
+#
+#     confirmed = covid_data2[covid_data2["Country/Region"] == w_country]["confirmed"].iloc[-1]
+#     death = covid_data2[covid_data2["Country/Region"] == w_country]["death"].iloc[-1]
+#     recovered = covid_data2[covid_data2["Country/Region"] == w_country]["recovered"].iloc[-1]
+#     active = covid_data2[covid_data2["Country/Region"] == w_country]["active"].iloc[-1]
+#     values = [active, recovered, death]
+#     dict_pasa = {}
+#     for i, v in enumerate(values):
+#         if v != 0:
+#             if i == 0:
+#                 dict_pasa["Actives"] = (values[i], "yellow")
+#             if i == 1:
+#                 dict_pasa["Recovered"] = (values[i], "green")
+#             if i == 2:
+#                 dict_pasa["Death"] = (values[i], "red")
+#     labels = list(dict_pasa.keys())
+#     values = []
+#     colors = []
+#     for v, c in dict_pasa.values():
+#         values.append(v)
+#         colors.append(c)
+#
+#     fig_donut = go.Figure(
+#         data=go.Pie(
+#             labels=labels,
+#             values=values,
+#             hoverinfo='label+value+percent',
+#             marker=dict(colors=colors),
+#             textinfo='label+value',
+#             hole=.7,
+#             rotation=90,
+#             # insidetextorientation='radial'
+#         ),
+#         layout=go.Layout(
+#             title={'text': f'Confirmed Cases: {confirmed}',
+#                    'y': 0.92,
+#                    'x': 0.5,
+#                    'xanchor': 'center',
+#                    'yanchor': 'top'},
+#             font=dict(color='white'),
+#             hovermode='closest',
+#             margin=dict(r=0),
+#             titlefont={'color': 'white', 'size': 20},
+#             paper_bgcolor='#1f2c56',
+#             plot_bgcolor='#1f2c56',
+#             legend={
+#                 'orientation': 'v',
+#                 'bgcolor': '#1f2c56',
+#                 'xanchor': 'center',
+#                 'x': 0.5,
+#                 'y': -0.5
+#             }
+#         )
+#     )
+#
+#     covid_data3 = covid_data2[covid_data2["Country/Region"] == w_country][["Country/Region", "date", "confirmed"]]
+#     # Usando shift para desplazar una fila
+#     covid_data3["daily increase"] = covid_data3["confirmed"] - covid_data3["confirmed"].shift(1)
+#
+#     fig_line = go.Figure(
+#         data=go.Bar(
+#             x=covid_data3['date'].tail(30),
+#             y=covid_data3['daily increase'].tail(30),
+#             name='Daily Confirmed Cases',
+#             marker=dict(color='orange'),
+#             hoverinfo='text',
+#             hovertext=
+#             '<b>Date</b>' + covid_data3['date'].tail(30).astype(str) + '<br>' +
+#             '<b>Daily Confirmed Cases</b>' + [f'{x:0f}' for x in covid_data3['daily increase'].tail(30)] + '<br>' +
+#             '<b>Country</b>' + covid_data3['Country/Region'].tail(30).astype(str) + '<br>'
+#         ),
+#         layout=go.Layout(
+#             title={'text': f'Last Daily Confirmed Cases',
+#                    'y': 0.92,
+#                    'x': 0.5,
+#                    'xanchor': 'center',
+#                    'yanchor': 'top'},
+#             font=dict(color='white'),
+#             hovermode='closest',
+#             titlefont={'color': 'white', 'size': 20},
+#             paper_bgcolor='#1f2c56',
+#             plot_bgcolor='#1f2c56',
+#             legend={
+#                 'orientation': 'v',
+#                 'bgcolor': '#1f2c56',
+#                 'xanchor': 'center',
+#                 'x': 0.5,
+#                 'y': -0.5
+#             },
+#             margin=dict(r=1),
+#             xaxis=dict(title='<b>Date</b>',
+#                        color='white',
+#                        showline=True,
+#                        showgrid=True),
+#             yaxis=dict(title='<b>Daily Confirmed Cases</b>',
+#                        color='white',
+#                        showline=True,
+#                        showgrid=True),
+#         ),
+#     )
+#
+#     return fig_confirmed, fig_death, fig_recovered, fig_active, fig_donut, fig_line
 
 
 app.title = "Movies Dashboard"
