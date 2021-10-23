@@ -480,6 +480,18 @@ app.layout = html.Div(children=[
             dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
                       id="pie_movies_country")
         ], className="card_container six columns"),
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="pie_gross_country")
+        ], className="card_container six columns"),
+    ], className="row flex display"),
+
+    # Octava  fila - Dona - Duración
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="pie_duration_range")
+        ], className="card_container twelve columns"),
     ], className="row flex display"),
 
     # Octava fila - Presupuesto promedio anual por género y Likes vs Votos en IMDb
@@ -854,7 +866,7 @@ def update_movies_kpi(movie_title):
               Output('choropleth', 'figure'), Output('average_budget_per_genre', 'figure'),
               Output('likes_votes_per_genre', 'figure'), Output("imdb_score_per_genre", "figure"),
               Output('movies_per_year_per_genre', 'figure'), Output('funnel_category_per_genre', 'figure'),
-              Output('top_countries_slider', 'max'), Input('dropdown_genres', 'value'))
+              Output('top_countries_slider', 'max'), Output('pie_duration_range','figure'),Input('dropdown_genres', 'value'))
 def update_genres_charts(genre):
     movies_gross_budget_per_genre = movies.query("genre == @genre") # movies_budget_clean
     fig_scatter_gross_budget = px.scatter(movies_gross_budget_per_genre, x='budget', y='gross', symbol='genre',
@@ -1111,13 +1123,52 @@ def update_genres_charts(genre):
     movies_per_genre_bak = movies_per_genre_bak.size().reset_index(name='count')
     top_countries_slider = len(movies_per_genre_bak)
 
+    movies_per_genre_bak_1 = movies.query("genre == @genre")
+
+    rango = ['Menos de 50 min', 'Entre 50 y 80 min', 'Entre 80 y 100 min', 'Entre 100 y 120 min', 'Entre 120 y 140 min',
+             'Entre 140 y 170 min', 'Entre 170 y 200 min', 'Más de 200 min']
+    count = [0, 0, 0, 0, 0, 0, 0, 0]
+    d = {'Rangos': rango, 'Cantidad': count}
+    dff = pd.DataFrame(d)
+
+    for index, row in movies_per_genre_bak_1.iterrows():
+        if row["duration"] <= 50:
+            dff.iat[0, 1] = dff.iat[0, 1] + 1
+        elif row["duration"] > 50 and row["duration"] <= 80:
+            dff.iat[1, 1] = dff.iat[1, 1] + 1
+        elif row["duration"] > 80 and row["duration"] <= 100:
+            dff.iat[2, 1] = dff.iat[2, 1] + 1
+        elif row["duration"] > 100 and row["duration"] <= 120:
+            dff.iat[3, 1] = dff.iat[3, 1] + 1
+        elif row["duration"] > 120 and row["duration"] <= 140:
+            dff.iat[4, 1] = dff.iat[4, 1] + 1
+        elif row["duration"] > 140 and row["duration"] <= 170:
+            dff.iat[5, 1] = dff.iat[5, 1] + 1
+        elif row["duration"] > 170 and row["duration"] <= 200:
+            dff.iat[6, 1] = dff.iat[6, 1] + 1
+        elif row["duration"] > 200:
+            dff.iat[7, 1] = dff.iat[7, 1] + 1
+
+    fig_pie_duration_range = px.pie(dff, values='Cantidad', names='Rangos', title='Porcentaje por Duracion ', hole=.3)
+
+    fig_pie_duration_range.update_layout(
+        layout_factory(title=f"Rangos de duración por porcentajes, género: {genre}"))
+
+    fig_pie_duration_range.update_layout(legend=dict(
+        yanchor="top",
+        y=0.0,
+        xanchor="left",
+        x=0.0
+    ))
+
+
     return fig_scatter_gross_budget, fig_scatter_gross_budget_clean,fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, \
            fig_scatter_gross_likes_clean,fig_choropleth, fig_average_budget_per_genre, fig_likes_votes_per_genre, fig_imdb_score_per_genre, \
-           fig_movies_per_year_per_genre, fig_funnel_category_per_genre, top_countries_slider
+           fig_movies_per_year_per_genre, fig_funnel_category_per_genre, top_countries_slider, fig_pie_duration_range
 
 
 @app.callback(Output('3d_score_budget_country', 'figure'), Output('3d_score_likes_country','figure'),
-              Output('pie_movies_country','figure'),Input('dropdown_genres', 'value'),
+              Output('pie_movies_country','figure'),Output('pie_gross_country','figure'),Input('dropdown_genres', 'value'),
               Input('top_countries_slider', 'value'))
 def update_3d_charts(genre, top_countries_slider_n):
     movies_per_genre_bak = movies.query("genre == @genre")
@@ -1220,8 +1271,26 @@ def update_3d_charts(genre, top_countries_slider_n):
         x=0.0
     ))
 
+    movies_per_genre = movies.query("genre==@genre")
+    movies_gross_per_country = movies_per_genre[["country", "gross"]].groupby("country")
+    movies_gross_per_country = movies_gross_per_country.sum()
+    movies_gross_per_country.reset_index(level=0, inplace=True)
+    movies_gross_per_country = movies_gross_per_country.sort_values(by="gross", ascending=False)
+    movies_gross_per_country = movies_gross_per_country.iloc[:top_countries_slider_n, :]
+    fig_pie_gross_country = px.pie(movies_gross_per_country, values='gross', names='country',
+                               title='Ingreso total por país', hole=.3)
 
-    return fig_3d_country_budget_gross, fig_3d_score_likes_country, fig_pie_movies_country
+    fig_pie_gross_country.update_layout(
+        layout_factory(title=f"Contribución de ingresos: {genre} y {top_countries_slider_n} países 'top'"))
+
+    fig_pie_gross_country.update_layout(legend=dict(
+        yanchor="top",
+        y=0.0,
+        xanchor="left",
+        x=0.0
+    ))
+
+    return fig_3d_country_budget_gross, fig_3d_score_likes_country, fig_pie_movies_country,fig_pie_gross_country
 
 
 @app.callback(Output('scatter_gross_budget_score_countries', 'figure'), Input('dropdown_genres', 'value'), \
@@ -1266,6 +1335,15 @@ def update_genres_charts(genre, content_rating):
     fig_gross_per_category_per_genre.update_traces(patch=trace_patch_factory())
     return fig_gross_per_category_per_genre
 
+
+@app.callback(Output("dropdown_countries","options"),Input("dropdown_genres","value"))
+def update_dropdown_countries(genre):
+
+    movies_per_genre=movies.query("genre == @genre")
+    countries_per_genre = list(movies["country"].sort_values().unique())
+    options = [{'label': c, 'value': c} for c in countries_per_genre]
+
+    return options
 
 # @app.callback(Output('confirmed', 'figure'), Output('death', 'figure'), Output('recovered', 'figure'),
 #               Output('active', 'figure'), Output(component_id="donut_chart", component_property="figure"),
