@@ -68,6 +68,9 @@ genres_unique = list(movies_budget_clean["genre"].sort_values().unique())
 # Lista única de categorías
 categories_unique = list(movies["content_rating"].sort_values().unique())
 
+# Lista única de países
+paises_unique = list(movies["country"].sort_values().unique())
+
 # Para el mapa de películas
 data2 = data.copy()
 data2[['genre', 'genre_2', 'genre_3', 'genre_4']] = data['genres'].str.split('|', 3, expand=True)
@@ -397,6 +400,40 @@ app.layout = html.Div(children=[
 
     ], className="row flex display"),
 
+    # Cuarta fila
+    html.Div([
+        html.Div([
+            dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="scatter_gross_budget_clean")
+        ], className="card_container six columns"),
+
+        html.Div([
+            dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
+                      id="scatter_gross_likes_clean")
+        ], className="card_container six columns", style={"marginLeft": "2px"}),
+
+    ], className="row flex display"),
+
+    # Quinta fila - Scatter Ingreso vs Presupuesto vs Score vs Países
+    html.Div([
+        html.Div([
+                html.P('Seleccionar países: ', className="fix-label", style={'color': 'white'}),
+                dcc.Dropdown(id="dropdown_countries",
+                             multi=True,
+                             searchable=True,
+                             value=['USA','Canada'],
+                             placeholder='Seleccionar país(es)',
+                             options=[{'label': c, 'value': c} for c in paises_unique],
+                             className="dcc-compon",
+                             clearable=False,
+                             ),
+                dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'},
+                                      id="scatter_gross_budget_score_countries")
+        ], className="create-container twelve columns")
+    ], className="row flex display"),
+
+
+
     # Cuarta fila - Mapa - Choropleth
     html.Div([
         html.Div([
@@ -404,6 +441,7 @@ app.layout = html.Div(children=[
                       id="choropleth")
         ], className="card_container twelve columns"),
     ], className="row flex display"),
+
 
     # Quinta fila - Slider - Cantidad de películas por país
     html.Div([
@@ -650,22 +688,25 @@ app.layout = html.Div(children=[
               Output('likes_kpi', 'figure'), Output('imdb_score_kpi', 'figure'), Output('movie_genre', 'children'),
               Input('dropdown_movies', 'value'))
 def update_movies_kpi(movie_title):
-    max_duration = movies["duration"].sort_values(ascending=False).iloc[0]
-    movie_duration = movies.query("movie_title == @movie_title")["duration"].iloc[0]
-
-    max_gross = movies["gross"].sort_values(ascending=False).iloc[0]
-    movie_gross = movies.query("movie_title == @movie_title")["gross"].iloc[0]
-
-    max_budget = movies["budget"].sort_values(ascending=False).iloc[0]
-    movie_budget = movies.query("movie_title == @movie_title")["budget"].iloc[0]
-
-    max_likes = max_duration = movies["movie_facebook_likes"].sort_values(ascending=False).iloc[0]
-    movie_likes = movies.query("movie_title == @movie_title")["movie_facebook_likes"].iloc[0]
-
-    max_imdb_score = movies["imdb_score"].sort_values(ascending=False).iloc[0]
-    movie_imdb_score = movies.query("movie_title == @movie_title")["imdb_score"].iloc[0]
-
     genre = movies.query("movie_title == @movie_title")["genre"].iloc[0]
+
+    movies_per_genre = movies.query("genre == @genre")
+
+    max_duration = movies_per_genre["duration"].sort_values(ascending=False).iloc[0]
+    movie_duration = movies_per_genre.query("movie_title == @movie_title")["duration"].iloc[0]
+
+    max_gross = movies_per_genre["gross"].sort_values(ascending=False).iloc[0]
+    movie_gross = movies_per_genre.query("movie_title == @movie_title")["gross"].iloc[0]
+
+    max_budget = movies_per_genre["budget"].sort_values(ascending=False).iloc[0]
+    movie_budget = movies_per_genre.query("movie_title == @movie_title")["budget"].iloc[0]
+
+    max_likes = max_duration = movies_per_genre["movie_facebook_likes"].sort_values(ascending=False).iloc[0]
+    movie_likes = movies_per_genre.query("movie_title == @movie_title")["movie_facebook_likes"].iloc[0]
+
+    max_imdb_score = movies_per_genre["imdb_score"].sort_values(ascending=False).iloc[0]
+    movie_imdb_score = movies_per_genre.query("movie_title == @movie_title")["imdb_score"].iloc[0]
+
 
     duration_kpi = go.Figure(data=go.Indicator(
         mode="number",
@@ -808,14 +849,14 @@ def update_movies_kpi(movie_title):
     return duration_kpi, gross_kpi, budget_kpi, likes_kpi, imdb_score_kpi, genre
 
 
-@app.callback(Output('scatter_gross_budget', 'figure'), Output('box_duration', 'figure'),
-              Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),
+@app.callback(Output('scatter_gross_budget', 'figure'), Output('scatter_gross_budget_clean','figure'),Output('box_duration', 'figure'),
+              Output('histogram_duration', 'figure'), Output('scatter_gross_likes', 'figure'),Output('scatter_gross_likes_clean','figure'),
               Output('choropleth', 'figure'), Output('average_budget_per_genre', 'figure'),
               Output('likes_votes_per_genre', 'figure'), Output("imdb_score_per_genre", "figure"),
               Output('movies_per_year_per_genre', 'figure'), Output('funnel_category_per_genre', 'figure'),
               Output('top_countries_slider', 'max'), Input('dropdown_genres', 'value'))
 def update_genres_charts(genre):
-    movies_gross_budget_per_genre = movies_budget_clean.query("genre == @genre")
+    movies_gross_budget_per_genre = movies.query("genre == @genre") # movies_budget_clean
     fig_scatter_gross_budget = px.scatter(movies_gross_budget_per_genre, x='budget', y='gross', symbol='genre',
                                           title="Diagrama de dispersión", trendline="ols",
                                           trendline_color_override="red", hover_name="movie_title",
@@ -835,6 +876,27 @@ def update_genres_charts(genre):
     fig_scatter_gross_budget.update_traces(patch=trace_patch_factory())
 
     fig_scatter_gross_budget.update_layout(layout_factory(title="Diagrama de dispersión: ingreso vs presupuesto"))
+
+    movies_gross_budget_per_genre_clean = movies_budget_clean.query("genre == @genre")  # movies_budget_clean
+    fig_scatter_gross_budget_clean = px.scatter(movies_gross_budget_per_genre_clean, x='budget', y='gross', symbol='genre',
+                                          title="Diagrama de dispersión", trendline="ols",
+                                          trendline_color_override="red", hover_name="movie_title",
+                                          hover_data=["country"])
+    # color_discrete_sequence=['green'])
+    fig_scatter_gross_budget_clean.update_layout(
+        title="Diagrama de dispersión: ingreso vs presupuesto",
+        xaxis_title="Presupuesto",
+        yaxis_title="Ingreso",
+        font=dict(
+            family="Helvetica",
+            size=14,
+            color="Black",
+        ),
+    )
+
+    fig_scatter_gross_budget_clean.update_traces(patch=trace_patch_factory())
+
+    fig_scatter_gross_budget_clean.update_layout(layout_factory(title="Diagrama de dispersión: ingreso vs presupuesto (Sin outliers)"))
 
     movies_duration_box_genre = movies.query("genre == @genre")
     fig_boxplot_duration = px.box(movies_duration_box_genre, x="genre", y="duration", hover_name="movie_title",
@@ -871,7 +933,7 @@ def update_genres_charts(genre):
     fig_histogram_duration.update_layout(layout_factory(title=f"Histograma de la duración: {genre}"))
     fig_histogram_duration.update_traces(patch=trace_patch_factory())
 
-    movies_scatter_gross_likes = mov_bak.query("genre == @genre")
+    movies_scatter_gross_likes = movies.query("genre == @genre") # mov_bak
     # Graficando la linea de tendencia
     fig_scatter_gross_likes = px.scatter(movies_scatter_gross_likes, x="movie_facebook_likes", y="gross",
                                          trendline="ols",
@@ -890,6 +952,27 @@ def update_genres_charts(genre):
     )
     fig_scatter_gross_likes.update_layout(layout_factory(title="Diagrama de dispersión: Ingresos vs Likes"))
     fig_scatter_gross_likes.update_traces(patch=trace_patch_factory())
+
+    movies_scatter_gross_likes_clean = mov_bak.query("genre == @genre")  # mov_bak
+    # Graficando la linea de tendencia
+    fig_scatter_gross_likes_clean = px.scatter(movies_scatter_gross_likes_clean, x="movie_facebook_likes", y="gross",
+                                         trendline="ols",
+                                         trendline_color_override="red", hover_name="movie_title",
+                                         hover_data=["country"])
+
+    fig_scatter_gross_likes_clean.update_layout(
+        title="Diagrama de dispersión: Ingresos vs Me gusta en Facebook (Eliminando películas con cero 'Me gusta')",
+        xaxis_title="Me gusta en Facebook",
+        yaxis_title="Ingresos",
+        font=dict(
+            family="Helvetica",
+            size=18,
+            color="Black"
+        )
+    )
+    fig_scatter_gross_likes_clean.update_layout(layout_factory(title="Diagrama de dispersión: Ingresos vs Likes (Sin outliers)"))
+    fig_scatter_gross_likes_clean.update_traces(patch=trace_patch_factory())
+
 
     movies_choropleth_genre = movies_country_merged.query("genre == @genre")
     fig_choropleth = go.Figure(data=go.Choropleth(
@@ -1028,8 +1111,8 @@ def update_genres_charts(genre):
     movies_per_genre_bak = movies_per_genre_bak.size().reset_index(name='count')
     top_countries_slider = len(movies_per_genre_bak)
 
-    return fig_scatter_gross_budget, fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, \
-           fig_choropleth, fig_average_budget_per_genre, fig_likes_votes_per_genre, fig_imdb_score_per_genre, \
+    return fig_scatter_gross_budget, fig_scatter_gross_budget_clean,fig_boxplot_duration, fig_histogram_duration, fig_scatter_gross_likes, \
+           fig_scatter_gross_likes_clean,fig_choropleth, fig_average_budget_per_genre, fig_likes_votes_per_genre, fig_imdb_score_per_genre, \
            fig_movies_per_year_per_genre, fig_funnel_category_per_genre, top_countries_slider
 
 
@@ -1119,6 +1202,7 @@ def update_3d_charts(genre, top_countries_slider_n):
     fig_3d_score_likes_country.update_layout(
         layout_factory(title=f"IMDb score vs Likes vs País: {genre} y {top_countries_slider_n} países 'top'"))
 
+
     movies_per_genre_bak_1 = movies.query("genre == @genre")
     movies_per_genre_bak_1 = movies_per_genre_bak_1.groupby("country")
     movies_per_genre_bak_1 = movies_per_genre_bak_1.size().reset_index(name='count')
@@ -1138,6 +1222,24 @@ def update_3d_charts(genre, top_countries_slider_n):
 
 
     return fig_3d_country_budget_gross, fig_3d_score_likes_country, fig_pie_movies_country
+
+
+@app.callback(Output('scatter_gross_budget_score_countries', 'figure'), Input('dropdown_genres', 'value'), \
+              Input('dropdown_countries', 'value'))
+def update_scatter_budget_gross_score_country(genre,countries):
+    movies_scatter_gross = movies.query("genre==@genre")
+    if len(countries)==0:
+        countries=["USA"]
+    movies_scatter_gross = movies_scatter_gross[movies_scatter_gross["country"].isin(countries)]
+
+    fig_scatter_gross_budget_score_country = px.scatter(movies_scatter_gross, x="budget", y="gross",
+                                                        size="imdb_score", color="country",
+                                                        hover_name="movie_title", log_x=True, size_max=60)
+
+    fig_scatter_gross_budget_score_country.update_layout(
+        layout_factory(title=f"Ingresos vs presupuesto por IMDb Score y País, Género: {genre}"))
+
+    return fig_scatter_gross_budget_score_country
 
 
 @app.callback(Output('gross_per_category_per_genre', 'figure'), Input('dropdown_genres', 'value'), \
