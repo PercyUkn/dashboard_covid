@@ -1229,49 +1229,49 @@ class movies_genre_likes(Resource):
 
         # TODO: FACTORIZAR EL CÓDIGO, EXTRAER FUNCIONALIDAD COMÚN EN UNA FUNCIÓN
         # Película con cantida de likes más alta del género $genre
-        if likes:
+        if likes > 0:
            #Escogemos la película con más likes, así como el valor de la cantidad de likes
            movie_title, fb_likes = genre_title_value(df=movies_scatter_gross_likes, clasificacion="movie_facebook_likes")
            # Se tiene que pasar del int64 de numpy al de Python para poder serializar sin problemas
-           return {'movie_title': movie_title, 'likes': int(fb_likes)}
+           return {'movie_title': movie_title, 'likes': int(fb_likes), 'genre':genre}
 
 
 
 
         # Película con el ingreso más alto del género $genre
-        elif gross:
+        elif gross > 0:
 
             movie_title,mv_gross = genre_title_value(df=movies_scatter_gross_likes,clasificacion="gross")
 
-            return {'movie_title': movie_title, 'gross': int(mv_gross)}
+            return {'movie_title': movie_title, 'gross': int(mv_gross), 'genre':genre}
 
 
 
 
 
         # Más larga
-        elif duration:
+        elif duration > 0:
 
             movie_title, mv_duration = genre_title_value(df=movies_scatter_gross_likes, clasificacion="duration")
 
-            return {'movie_title': movie_title, 'duration': int(mv_duration)}
+            return {'movie_title': movie_title, 'duration': int(mv_duration), 'genre':genre}
 
 
         #Con mayor presupuesto
-        elif budget:
+        elif budget > 0:
 
             movie_title, mv_budget = genre_title_value(df=movies_scatter_gross_likes, clasificacion="budget")
 
-            return {'movie_title': movie_title, 'duration': float(mv_budget)}
+            return {'movie_title': movie_title, 'duration': float(mv_budget), 'genre':genre}
 
 
 
 
         # Mejor valorada
-        elif imdb_score:
+        elif imdb_score > 0:
             movie_title, mv_imdb_score = genre_title_value(df=movies_scatter_gross_likes, clasificacion="imdb_score")
 
-            return {'movie_title': movie_title, 'duration': float(mv_imdb_score)}
+            return {'movie_title': movie_title, 'duration': float(mv_imdb_score), 'genre':genre}
 
 
         else:
