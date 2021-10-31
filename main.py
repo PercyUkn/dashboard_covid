@@ -1229,7 +1229,7 @@ class movies_genre_likes(Resource):
 
         # TODO: FACTORIZAR EL CÓDIGO, EXTRAER FUNCIONALIDAD COMÚN EN UNA FUNCIÓN
         # Película con cantida de likes más alta del género $genre
-        if likes > 0:
+        if likes:
            #Escogemos la película con más likes, así como el valor de la cantidad de likes
            movie_title, fb_likes = genre_title_value(df=movies_scatter_gross_likes, clasificacion="movie_facebook_likes")
            # Se tiene que pasar del int64 de numpy al de Python para poder serializar sin problemas
@@ -1239,7 +1239,7 @@ class movies_genre_likes(Resource):
 
 
         # Película con el ingreso más alto del género $genre
-        elif gross > 0:
+        elif gross:
 
             movie_title,mv_gross = genre_title_value(df=movies_scatter_gross_likes,clasificacion="gross")
 
@@ -1250,7 +1250,7 @@ class movies_genre_likes(Resource):
 
 
         # Más larga
-        elif duration > 0:
+        elif duration:
 
             movie_title, mv_duration = genre_title_value(df=movies_scatter_gross_likes, clasificacion="duration")
 
@@ -1258,7 +1258,7 @@ class movies_genre_likes(Resource):
 
 
         #Con mayor presupuesto
-        elif budget > 0:
+        elif budget:
 
             movie_title, mv_budget = genre_title_value(df=movies_scatter_gross_likes, clasificacion="budget")
 
@@ -1268,7 +1268,7 @@ class movies_genre_likes(Resource):
 
 
         # Mejor valorada
-        elif imdb_score > 0:
+        elif imdb_score:
             movie_title, mv_imdb_score = genre_title_value(df=movies_scatter_gross_likes, clasificacion="imdb_score")
 
             return {'movie_title': movie_title, 'duration': float(mv_imdb_score), 'genre':genre}
