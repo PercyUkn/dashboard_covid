@@ -10,7 +10,7 @@ from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import pandas as pd
 import plotly.express as px
-from flask import Flask
+from flask import Flask, request
 from flask_restful import Resource, Api
 import math
 
@@ -1206,11 +1206,85 @@ api = Api(app)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 
-class HelloWorld(Resource):
-    def get(self):
-        return {'hello': 'world'}
 
-api.add_resource(HelloWorld, '/rest')
+
+def genre_title_value(df, clasificacion):
+    movie_title = df.sort_values(by=clasificacion, ascending=False)["movie_title"].iloc[0][:-1]
+    value = df.sort_values(by=clasificacion,ascending=False)[clasificacion].iloc[0]
+    return movie_title,value
+
+# Webhook: TODO POST
+class movies_genre_likes(Resource):
+    def post(self):
+        data = request.get_json()
+        genre = data["genre"]
+        likes = ("likes" in data.keys())
+        gross = ("gross" in data.keys())
+        duration = ("duration" in data.keys())
+        budget = ("budget" in data.keys())
+        imdb_score = ("imdb_score" in data.keys())
+
+        movies_scatter_gross_likes = movies.query("genre == @genre")
+
+
+        # TODO: FACTORIZAR EL CÓDIGO, EXTRAER FUNCIONALIDAD COMÚN EN UNA FUNCIÓN
+        # Película con cantida de likes más alta del género $genre
+        if likes:
+           #Escogemos la película con más likes, así como el valor de la cantidad de likes
+           movie_title, fb_likes = genre_title_value(df=movies_scatter_gross_likes, clasificacion="movie_facebook_likes")
+           # Se tiene que pasar del int64 de numpy al de Python para poder serializar sin problemas
+           return {'movie_title': movie_title, 'likes': int(fb_likes)}
+
+
+
+
+        # Película con el ingreso más alto del género $genre
+        elif gross:
+
+            movie_title,mv_gross = genre_title_value(df=movies_scatter_gross_likes,clasificacion="gross")
+
+            return {'movie_title': movie_title, 'gross': int(mv_gross)}
+
+
+
+
+
+        # Más larga
+        elif duration:
+
+            movie_title, mv_duration = genre_title_value(df=movies_scatter_gross_likes, clasificacion="duration")
+
+            return {'movie_title': movie_title, 'duration': int(mv_duration)}
+
+
+        #Con mayor presupuesto
+        elif budget:
+
+            movie_title, mv_budget = genre_title_value(df=movies_scatter_gross_likes, clasificacion="budget")
+
+            return {'movie_title': movie_title, 'duration': float(mv_budget)}
+
+
+
+
+        # Mejor valorada
+        elif imdb_score:
+            movie_title, mv_imdb_score = genre_title_value(df=movies_scatter_gross_likes, clasificacion="imdb_score")
+
+            return {'movie_title': movie_title, 'duration': float(mv_imdb_score)}
+
+
+        else:
+            return {'movie_title': None}
+
+
+
+
+
+
+
+# Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
+api.add_resource(movies_genre_likes, '/genre_likes')
 
 if __name__ == '__main__':
     app.run(debug=True)
