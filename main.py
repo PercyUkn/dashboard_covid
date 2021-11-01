@@ -1188,12 +1188,63 @@ app = Flask(__name__)
 app = init_dashboard(app)
 api = Api(app)
 
-
 # Press the green button in the gutter to run the script.
 # if __name__ == '__main__':
 # app.run_server(debug=True)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+## BASE DE DATOS -- MYSQL
+
+import mysql.connector
+
+
+def conexion():
+    cnx = mysql.connector.connect(user='u650849267_chatbot', password='Chatbot1',
+                                  host='45.93.101.1',
+                                  database='u650849267_chatbot')
+    return cnx
+
+
+def Inserta(preg, resp):
+    entendio = True
+    if "No le he entendido. Intente reformular la consulta." in resp:
+        entendio = False
+    if "¿Puede expresarse con otras palabras? No le he entendido." in resp:
+        entendio = False
+    if "No entendí el significado." in resp:
+        entendio = False
+    cnx = conexion()
+    cursor = cnx.cursor()
+    add_data = ("INSERT INTO data "
+                "(pregunta, respuesta, entendio) "
+                "VALUES (%s, %s, %s)")
+    value_data = (preg, resp, entendio)
+    cursor.execute(add_data, value_data)
+    emp_no = cursor.lastrowid
+    cnx.commit()
+    cursor.close()
+    cnx.close()
+
+
+def Lee():
+    cnx = conexion()
+    cursor = cnx.cursor()
+    query = ("SELECT * from data")
+    cursor.execute(query)
+    result = cursor.fetchall()
+    # for row in result:
+    #    print (row)
+    print(result)
+    cnx.close()
+
+
+def LimpiaData():
+    cnx = conexion()
+    cursor = cnx.cursor()
+    query = ("truncate table data")
+    cursor.execute(query)
+    cnx.close()
 
 
 def genre_title_value(df, clasificacion, ascending):
@@ -1307,8 +1358,25 @@ class movies_genre_likes(Resource):
             return {'movie_title': None}
 
 
+# Webhook: TODO POST
+class pregunta_respuesta_chatbot(Resource):
+    def post(self):
+        data = request.get_json()
+        pregunta = None
+        if "pregunta" in data.keys():
+            pregunta = data["pregunta"]  # en base a que criterio se escoge a las tops
+
+        respuesta = None
+        if "respuesta" in data.keys():
+            respuesta = data["respuesta"]
+        Inserta(pregunta, respuesta)
+        return {'pregunta': pregunta, 'respuesta': respuesta}, 200
+
+
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
+
 api.add_resource(movies_genre_likes, '/genre_likes')
+api.add_resource(pregunta_respuesta_chatbot, '/estadisticas_chatbot')
 
 if __name__ == '__main__':
     app.run(debug=True)
