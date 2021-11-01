@@ -1372,11 +1372,31 @@ class pregunta_respuesta_chatbot(Resource):
         Inserta(pregunta, respuesta)
         return {'pregunta': pregunta, 'respuesta': respuesta}, 200
 
-
+# Webhook: TODO POST
+class pelicula_estadistica(Resource):
+    def post(self):
+        data = request.get_json()
+        colores = ("colores" in data.keys()) # Para activar: devolver colores, se puede añadir más funcionalidad
+        movie_tile = None
+        # Carga datos según el nombre de la película
+        if "movie_title" in data.keys():
+            movie_title = data["movie_title"]  # Nombre de la película, la validación se hace en el chatbot
+            movie_title += "\xa0" # Porque se codificó con ANSI, y debería ser con UTF-8
+            color = movies.query("movie_title == @movie_title")["color"].values[0]
+            year = int(movies.query("movie_title == @movie_title")["title_year"].values[0])
+            movie_link = movies.query("movie_title == @movie_title")["movie_imdb_link"].values[0]
+            if color == " Black and White":
+                color = "blanco y negro"
+            else:
+                color = "colores"
+        movie_title = movie_title[:-1] # Elimina el espacio posterior (trailing spaces)
+        if colores:
+            return {"movie_title": movie_title, "color":color,"year":year, "movie_link": movie_link}
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
 
 api.add_resource(movies_genre_likes, '/genre_likes')
 api.add_resource(pregunta_respuesta_chatbot, '/estadisticas_chatbot')
+api.add_resource(pelicula_estadistica, '/estadisticas_peliculas')
 
 if __name__ == '__main__':
     app.run(debug=True)
