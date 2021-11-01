@@ -24,7 +24,7 @@ data = data.drop_duplicates()
 movies = data.loc[:,
          ['budget', 'gross', 'genres', 'duration', 'movie_facebook_likes', 'imdb_score', 'movie_title',
           'title_year',
-          'content_rating', 'country']]  # Agregando country 20-10-21
+          'content_rating', 'country','color','movie_imdb_link']]  # Agregando country 20-10-21, color y movie_imdb_link 31-10-21
 movies.dropna(how="any", inplace=True)
 movies[['genre', 'genre_2', 'genre_3', 'genre_4']] = movies['genres'].str.split('|', 3, expand=True)
 drop_columnas = ['genre_2', 'genre_3', 'genre_4', 'genres']
@@ -1198,7 +1198,8 @@ api = Api(app)
 def genre_title_value(df, clasificacion, ascending):
     movie_title = df.sort_values(by=clasificacion, ascending=ascending)["movie_title"].iloc[0][:-1]
     value = df.sort_values(by=clasificacion, ascending=ascending)[clasificacion].iloc[0]
-    return movie_title, value
+    movie_link = df.sort_values(by=clasificacion, ascending=ascending)["movie_imdb_link"].iloc[0]
+    return movie_title, value,movie_link
 
 
 # Webhook: TODO POST
@@ -1211,7 +1212,7 @@ class movies_genre_likes(Resource):
         duration = ("duration" in data.keys())
         budget = ("budget" in data.keys())
         imdb_score = ("imdb_score" in data.keys())
-        movies_scatter_gross_likes = movies.query("genre == @genre")
+        movies_genre_statistics = movies.query("genre == @genre")
         if "ascending" in data.keys():
             ascending = (data["ascending"] == "True") # True or False
 
@@ -1226,10 +1227,9 @@ class movies_genre_likes(Resource):
         # Película con cantida de likes más alta del género $genre
         if likes:
             # Escogemos la película con más likes, así como el valor de la cantidad de likes
-            movie_title, fb_likes = genre_title_value(df=movies_scatter_gross_likes,
-                                                      clasificacion="movie_facebook_likes",ascending=ascending)
+            movie_title, fb_likes,movie_link = genre_title_value(df=movies_genre_statistics,clasificacion="movie_facebook_likes",ascending=ascending)
             # Se tiene que pasar del int64 de numpy al de Python para poder serializar sin problemas
-            return {'movie_title': movie_title, 'likes': int(fb_likes), 'genre_translated': genre_translate[genre]}
+            return {'movie_title': movie_title, 'likes': int(fb_likes), 'genre_translated': genre_translate[genre],'movie_link':movie_link}
 
 
 
@@ -1237,9 +1237,9 @@ class movies_genre_likes(Resource):
         # Película con el ingreso más alto/bajo del género $genre
         elif gross:
 
-            movie_title, mv_gross = genre_title_value(df=movies_scatter_gross_likes, clasificacion="gross",ascending=ascending)
+            movie_title, mv_gross,movie_link = genre_title_value(df=movies_genre_statistics, clasificacion="gross",ascending=ascending)
 
-            return {'movie_title': movie_title, 'gross': int(mv_gross), 'genre_translated': genre_translate[genre]}
+            return {'movie_title': movie_title, 'gross': int(mv_gross), 'genre_translated': genre_translate[genre],'movie_link':movie_link}
 
 
 
@@ -1248,29 +1248,29 @@ class movies_genre_likes(Resource):
         # Más/menos larga
         elif duration:
 
-            movie_title, mv_duration = genre_title_value(df=movies_scatter_gross_likes, clasificacion="duration",ascending=ascending)
+            movie_title, mv_duration,movie_link = genre_title_value(df=movies_genre_statistics, clasificacion="duration",ascending=ascending)
 
             return {'movie_title': movie_title, 'duration': int(mv_duration),
-                    'genre_translated': genre_translate[genre]}
+                    'genre_translated': genre_translate[genre],'movie_link':movie_link}
 
 
         # Con mayor/menor presupuesto
         elif budget:
 
-            movie_title, mv_budget = genre_title_value(df=movies_scatter_gross_likes, clasificacion="budget",ascending=ascending)
+            movie_title, mv_budget,movie_link = genre_title_value(df=movies_genre_statistics, clasificacion="budget",ascending=ascending)
 
-            return {'movie_title': movie_title, 'duration': float(mv_budget),
-                    'genre_translated': genre_translate[genre]}
+            return {'movie_title': movie_title, 'budget': float(mv_budget),
+                    'genre_translated': genre_translate[genre],'movie_link':movie_link}
 
 
 
 
         # Mejor valorada/Peor valorada
         elif imdb_score:
-            movie_title, mv_imdb_score = genre_title_value(df=movies_scatter_gross_likes, clasificacion="imdb_score",ascending=ascending)
+            movie_title, mv_imdb_score,movie_link = genre_title_value(df=movies_genre_statistics, clasificacion="imdb_score",ascending=ascending)
 
-            return {'movie_title': movie_title, 'duration': float(mv_imdb_score),
-                    'genre_translated': genre_translate[genre]}
+            return {'movie_title': movie_title, 'imdb_score': float(mv_imdb_score),
+                    'genre_translated': genre_translate[genre],'movie_link':movie_link}
 
 
         else:
