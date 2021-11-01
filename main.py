@@ -14,7 +14,6 @@ from flask import Flask, request
 from flask_restful import Resource, Api
 import math
 
-
 #### DATOS
 ########################################################################################################################
 # Data full movies
@@ -112,7 +111,7 @@ IQR = movie_facebook_likes_clean["imdb_score"].quantile(.75) - movie_facebook_li
 umbral_superior = 146.405e+06  # Q3 + 1.5 IQR (box plot)
 umbral_superior_maximo = movie_facebook_likes_clean["imdb_score"].quantile(.75) + 3 * IQR
 outliers_index = list(
-movie_facebook_likes_clean[movie_facebook_likes_clean['imdb_score'] > umbral_superior_maximo].index)
+    movie_facebook_likes_clean[movie_facebook_likes_clean['imdb_score'] > umbral_superior_maximo].index)
 movie_facebook_likes_clean = movie_facebook_likes_clean.drop(outliers_index)
 
 
@@ -143,12 +142,7 @@ def trace_patch_factory(color='#8cf781'):
     return patch
 
 
-
-
-
-
 # Insertando Dash dentro de Flask
-
 
 
 def init_dashboard(server):
@@ -161,8 +155,6 @@ def init_dashboard(server):
             '/assets/custom-style.css'
         ]
     )
-
-
 
     ########################################################################################################################
     # Figuras estáticas
@@ -220,8 +212,6 @@ def init_dashboard(server):
             color="Black"
         )
     )
-
-
 
     ######################################################################################################################
     ######################################################################################################################
@@ -528,7 +518,6 @@ def init_dashboard(server):
     init_callbacks(dash_app)
 
     return dash_app.server
-
 
 
 ##CALLBACKS
@@ -1194,24 +1183,23 @@ def init_callbacks(app):
         return options
 
 
-
-
 app = Flask(__name__)
 app = init_dashboard(app)
 api = Api(app)
 
+
 # Press the green button in the gutter to run the script.
-#if __name__ == '__main__':
-    #app.run_server(debug=True)
+# if __name__ == '__main__':
+# app.run_server(debug=True)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 
 
+def genre_title_value(df, clasificacion, ascending):
+    movie_title = df.sort_values(by=clasificacion, ascending=ascending)["movie_title"].iloc[0][:-1]
+    value = df.sort_values(by=clasificacion, ascending=ascending)[clasificacion].iloc[0]
+    return movie_title, value
 
-def genre_title_value(df, clasificacion):
-    movie_title = df.sort_values(by=clasificacion, ascending=False)["movie_title"].iloc[0][:-1]
-    value = df.sort_values(by=clasificacion,ascending=False)[clasificacion].iloc[0]
-    return movie_title,value
 
 # Webhook: TODO POST
 class movies_genre_likes(Resource):
@@ -1224,7 +1212,8 @@ class movies_genre_likes(Resource):
         budget = ("budget" in data.keys())
         imdb_score = ("imdb_score" in data.keys())
         movies_scatter_gross_likes = movies.query("genre == @genre")
-
+        if "ascending" in data.keys():
+            ascending = (data["ascending"] == "True") # True or False
 
         genre_translated = ["acción", "aventura", "animación", "biografía", "comedia", "crimen", "documental", "drama",
                             "familia", "fantasía", "horror", "musical", "misterio", "romance", "ciencia ficción",
@@ -1233,61 +1222,59 @@ class movies_genre_likes(Resource):
         for i, j in enumerate(genres_unique):
             genre_translate[j] = genre_translated[i]
 
-
         # TODO: FACTORIZAR EL CÓDIGO, EXTRAER FUNCIONALIDAD COMÚN EN UNA FUNCIÓN
         # Película con cantida de likes más alta del género $genre
         if likes:
-           #Escogemos la película con más likes, así como el valor de la cantidad de likes
-           movie_title, fb_likes = genre_title_value(df=movies_scatter_gross_likes, clasificacion="movie_facebook_likes")
-           # Se tiene que pasar del int64 de numpy al de Python para poder serializar sin problemas
-           return {'movie_title': movie_title, 'likes': int(fb_likes), 'genre_translated':genre_translate[genre]}
+            # Escogemos la película con más likes, así como el valor de la cantidad de likes
+            movie_title, fb_likes = genre_title_value(df=movies_scatter_gross_likes,
+                                                      clasificacion="movie_facebook_likes",ascending=ascending)
+            # Se tiene que pasar del int64 de numpy al de Python para poder serializar sin problemas
+            return {'movie_title': movie_title, 'likes': int(fb_likes), 'genre_translated': genre_translate[genre]}
 
 
 
 
-        # Película con el ingreso más alto del género $genre
+        # Película con el ingreso más alto/bajo del género $genre
         elif gross:
 
-            movie_title,mv_gross = genre_title_value(df=movies_scatter_gross_likes,clasificacion="gross")
+            movie_title, mv_gross = genre_title_value(df=movies_scatter_gross_likes, clasificacion="gross",ascending=ascending)
 
-            return {'movie_title': movie_title, 'gross': int(mv_gross),'genre_translated':genre_translate[genre]}
-
-
+            return {'movie_title': movie_title, 'gross': int(mv_gross), 'genre_translated': genre_translate[genre]}
 
 
 
-        # Más larga
+
+
+        # Más/menos larga
         elif duration:
 
-            movie_title, mv_duration = genre_title_value(df=movies_scatter_gross_likes, clasificacion="duration")
+            movie_title, mv_duration = genre_title_value(df=movies_scatter_gross_likes, clasificacion="duration",ascending=ascending)
 
-            return {'movie_title': movie_title, 'duration': int(mv_duration), 'genre_translated':genre_translate[genre]}
+            return {'movie_title': movie_title, 'duration': int(mv_duration),
+                    'genre_translated': genre_translate[genre]}
 
 
-        #Con mayor presupuesto
+        # Con mayor/menor presupuesto
         elif budget:
 
-            movie_title, mv_budget = genre_title_value(df=movies_scatter_gross_likes, clasificacion="budget")
+            movie_title, mv_budget = genre_title_value(df=movies_scatter_gross_likes, clasificacion="budget",ascending=ascending)
 
-            return {'movie_title': movie_title, 'duration': float(mv_budget),'genre_translated':genre_translate[genre]}
+            return {'movie_title': movie_title, 'duration': float(mv_budget),
+                    'genre_translated': genre_translate[genre]}
 
 
 
 
-        # Mejor valorada
+        # Mejor valorada/Peor valorada
         elif imdb_score:
-            movie_title, mv_imdb_score = genre_title_value(df=movies_scatter_gross_likes, clasificacion="imdb_score")
+            movie_title, mv_imdb_score = genre_title_value(df=movies_scatter_gross_likes, clasificacion="imdb_score",ascending=ascending)
 
-            return {'movie_title': movie_title, 'duration': float(mv_imdb_score), 'genre_translated':genre_translate[genre]}
+            return {'movie_title': movie_title, 'duration': float(mv_imdb_score),
+                    'genre_translated': genre_translate[genre]}
 
 
         else:
             return {'movie_title': None}
-
-
-
-
-
 
 
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
