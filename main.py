@@ -1296,7 +1296,7 @@ class movies_genre_likes(Resource):
                 movie_place = {}
                 movie_title = movies_genre_statistics.sort_values(by=criterio, ascending=False)["movie_title"].iloc[
                                   i][:-1]
-                value = movies_genre_statistics.sort_values(by=criterio, ascending=False)[criterio].iloc[i]
+                value = int(movies_genre_statistics.sort_values(by=criterio, ascending=False)[criterio].iloc[i])
                 movie_place["movie_title"] = movie_title
                 movie_place["value"] = value
                 movie_ranking.append(movie_place)
