@@ -1471,7 +1471,7 @@ class director_estadistica(Resource):
                                                                                              ascending=False)[
                         "movie_imdb_link"].head(n_peliculas))
         if director_peliculas:
-            return {"director": director_name, "n_peliculas": n_peliculas, "películas_famosas":peliculas_famosas, "peliculas_link":peliculas_famosas_link}
+            return {"director": director_name, "n_peliculas": n_peliculas, "peliculas_famosas":peliculas_famosas, "peliculas_link":peliculas_famosas_link}
 
 
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
