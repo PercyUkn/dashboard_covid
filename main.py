@@ -1246,9 +1246,9 @@ def Inserta(json_data):
         for row in entidades:
             cursor = cnx.cursor()
             add_data = ("INSERT INTO entidad "
-                        "(valor, grado_confianza, id_dialogo) "
-                        "VALUES (%s, %s, %s)")
-            value_data = (row["value"], row["confidence"], dialogo_nro)
+                        "(entity, valor, grado_confianza, id_dialogo) "
+                        "VALUES (%s,%s, %s, %s)")
+            value_data = (row["entity"],row["value"], row["confidence"], dialogo_nro)
             cursor.execute(add_data, value_data)
 
     cnx.commit()
