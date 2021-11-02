@@ -1209,8 +1209,7 @@ def conexion():
 
 
 def Inserta(json_data):
-
-    #json_data = json.loads(json_text)
+    # json_data = json.loads(json_text)
 
     preg = json_data['pregunta']
     resp = json_data["respuesta"]
@@ -1248,7 +1247,7 @@ def Inserta(json_data):
             add_data = ("INSERT INTO entidad "
                         "(entity, valor, grado_confianza, id_dialogo) "
                         "VALUES (%s,%s, %s, %s)")
-            value_data = (row["entity"],row["value"], row["confidence"], dialogo_nro)
+            value_data = (row["entity"], row["value"], row["confidence"], dialogo_nro)
             cursor.execute(add_data, value_data)
 
     cnx.commit()
@@ -1392,7 +1391,7 @@ class movies_genre_likes(Resource):
 class pregunta_respuesta_chatbot(Resource):
     def post(self):
         data = request.get_json()
-        #pregunta = None
+        # pregunta = None
         if "pregunta" in data.keys():
             pregunta = data["pregunta"]  # en base a que criterio se escoge a las tops
 
@@ -1409,19 +1408,20 @@ class pregunta_respuesta_chatbot(Resource):
             entidades = data["entidades"]
 
         Inserta(data)
-        return {'pregunta': pregunta, 'respuesta': respuesta, "intenciones":intenciones, "entidades": entidades}, 200
+        return {'pregunta': pregunta, 'respuesta': respuesta, "intenciones": intenciones, "entidades": entidades}, 200
+
 
 # Webhook: TODO POST
 class pelicula_estadistica(Resource):
     def post(self):
         data = request.get_json()
-        colores = ("colores" in data.keys()) # Para activar: devolver colores, se puede añadir más funcionalidad
-        movie_director = ("movie_director" in data.keys())  # Para activar: devolver colores, se puede añadir más funcionalidad
-        movie_title = None
+        colores = ("colores" in data.keys())  # Para activar: devolver colores, se puede añadir más funcionalidad
+        movie_director = (
+                    "movie_director" in data.keys())  # Para activar: devolver colores, se puede añadir más funcionalidad
         # Carga datos según el nombre de la película
         if "movie_title" in data.keys():
             movie_title = data["movie_title"]  # Nombre de la película, la validación se hace en el chatbot
-            movie_title += "\xa0" # Porque se codificó con ANSI, y debería ser con UTF-8
+            movie_title += "\xa0"  # Porque se codificó con ANSI, y debería ser con UTF-8
             color = movies.query("movie_title == @movie_title")["color"].values[0]
             year = int(movies.query("movie_title == @movie_title")["title_year"].values[0])
             movie_link = movies.query("movie_title == @movie_title")["movie_imdb_link"].values[0]
@@ -1433,9 +1433,45 @@ class pelicula_estadistica(Resource):
                 color = "colores"
         movie_title = movie_title[:-1]  # Elimina el espacio posterior (trailing spaces)
         if colores:
-            return {"movie_title": movie_title, "color":color,"year":year, "movie_link": movie_link}
+            return {"movie_title": movie_title, "color": color, "year": year, "movie_link": movie_link}
         if movie_director:
-            return {"movie_title": movie_title, "director":director,"year":year, "movie_link": movie_link}
+            return {"movie_title": movie_title, "director": director, "year": year, "movie_link": movie_link}
+
+
+class director_estadistica(Resource):
+    def post(self):
+        data = request.get_json()
+        director_peliculas = (
+                    "director_peliculas" in data.keys())  # Para activar: devolver colores, se puede añadir más funcionalidad
+        director_name = None
+        movie_director_data = data3[["movie_title", "director_name", "imdb_score", "movie_imdb_link"]]
+        movie_director_data_group = movie_director_data.groupby("director_name").count()
+        movie_director_data_group.reset_index(level=0, inplace=True)
+
+        # Carga datos según el nombre de la película
+        if "director_name" in data.keys():
+            director_name = data["director_name"]  # Nombre de la película, la validación se hace en el chatbot
+            n_peliculas = int(movie_director_data_group.query("director_name == @director_name")["movie_title"].values[0])
+            if (n_peliculas > 5):
+                peliculas_famosas = list(
+                    movie_director_data.query("director_name == @director_name").sort_values(by="imdb_score",
+                                                                                             ascending=False)[
+                        "movie_title"].head(5))
+                peliculas_famosas_link = list(
+                    movie_director_data.query("director_name == @director_name").sort_values(by="imdb_score",
+                                                                                             ascending=False)[
+                        "movie_imdb_link"].head(5))
+            else:
+                peliculas_famosas = list(
+                    movie_director_data.query("director_name == @director_name").sort_values(by="imdb_score",
+                                                                                             ascending=False)[
+                        "movie_title"].head(n_peliculas))
+                peliculas_famosas_link = list(
+                    movie_director_data.query("director_name == @director_name").sort_values(by="imdb_score",
+                                                                                             ascending=False)[
+                        "movie_imdb_link"].head(n_peliculas))
+        if director_peliculas:
+            return {"director": director_name, "n_peliculas": n_peliculas, "películas_famosas":peliculas_famosas, "peliculas_link":peliculas_famosas_link}
 
 
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
@@ -1443,6 +1479,7 @@ class pelicula_estadistica(Resource):
 api.add_resource(movies_genre_likes, '/genre_likes')
 api.add_resource(pregunta_respuesta_chatbot, '/estadisticas_chatbot')
 api.add_resource(pelicula_estadistica, '/estadisticas_peliculas')
+api.add_resource(director_estadistica, '/estadisticas_director')
 
 if __name__ == '__main__':
     app.run(debug=True)
