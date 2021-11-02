@@ -21,7 +21,7 @@ import math
 # Data full movies
 data = pd.read_csv("data/IMDB_Movies.csv")
 data = data.drop_duplicates()
-
+data3 = data.copy()
 # Movies - Limpiando
 movies = data.loc[:,
          ['budget', 'gross', 'genres', 'duration', 'movie_facebook_likes', 'imdb_score', 'movie_title',
@@ -1416,7 +1416,8 @@ class pelicula_estadistica(Resource):
     def post(self):
         data = request.get_json()
         colores = ("colores" in data.keys()) # Para activar: devolver colores, se puede añadir más funcionalidad
-        movie_tile = None
+        movie_director = ("movie_director" in data.keys())  # Para activar: devolver colores, se puede añadir más funcionalidad
+        movie_title = None
         # Carga datos según el nombre de la película
         if "movie_title" in data.keys():
             movie_title = data["movie_title"]  # Nombre de la película, la validación se hace en el chatbot
@@ -1424,13 +1425,19 @@ class pelicula_estadistica(Resource):
             color = movies.query("movie_title == @movie_title")["color"].values[0]
             year = int(movies.query("movie_title == @movie_title")["title_year"].values[0])
             movie_link = movies.query("movie_title == @movie_title")["movie_imdb_link"].values[0]
+            movie_director_data = data3[["movie_title", "director_name"]]
+            director = movie_director_data.query("movie_title == @movie_title")["director_name"].values[0]
             if color == " Black and White":
                 color = "blanco y negro"
             else:
                 color = "colores"
-        movie_title = movie_title[:-1] # Elimina el espacio posterior (trailing spaces)
+        movie_title = movie_title[:-1]  # Elimina el espacio posterior (trailing spaces)
         if colores:
             return {"movie_title": movie_title, "color":color,"year":year, "movie_link": movie_link}
+        if movie_director:
+            return {"movie_title": movie_title, "director":director,"year":year, "movie_link": movie_link}
+
+
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
 
 api.add_resource(movies_genre_likes, '/genre_likes')
