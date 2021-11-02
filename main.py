@@ -3,6 +3,8 @@
 # Use a breakpoint in the code line below to debug your script.
 # Press ⌘F8 to toggle the breakpoint.
 # Imports necesarios
+import json
+
 import dash
 from dash import html, callback
 from dash import dcc
@@ -1206,7 +1208,15 @@ def conexion():
     return cnx
 
 
-def Inserta(preg, resp):
+def Inserta(json_data):
+
+    #json_data = json.loads(json_text)
+
+    preg = json_data['pregunta']
+    resp = json_data["respuesta"]
+    intent = json_data["intenciones"]
+    entidades = json_data["entidades"]
+
     entendio = True
     if "No le he entendido. Intente reformular la consulta." in resp:
         entendio = False
@@ -1216,13 +1226,33 @@ def Inserta(preg, resp):
         entendio = False
     cnx = conexion()
     cursor = cnx.cursor()
-    add_data = ("INSERT INTO data "
+    add_data = ("INSERT INTO dialogo "
                 "(pregunta, respuesta, entendio) "
                 "VALUES (%s, %s, %s)")
     value_data = (preg, resp, entendio)
     cursor.execute(add_data, value_data)
-    emp_no = cursor.lastrowid
+    dialogo_nro = cursor.lastrowid
+
+    if len(intent) > 0:
+        for row in intent:
+            cursor = cnx.cursor()
+            add_data = ("INSERT INTO intencion "
+                        "(intencion_detectada, grado_confianza, id_dialogo) "
+                        "VALUES (%s, %s, %s)")
+            value_data = (row["intent"], row["confidence"], dialogo_nro)
+            cursor.execute(add_data, value_data)
+
+    if len(entidades) > 0:
+        for row in entidades:
+            cursor = cnx.cursor()
+            add_data = ("INSERT INTO entidad "
+                        "(valor, grado_confianza, id_dialogo) "
+                        "VALUES (%s, %s, %s)")
+            value_data = (row["value"], row["confidence"], dialogo_nro)
+            cursor.execute(add_data, value_data)
+
     cnx.commit()
+    # cnx.rollback()
     cursor.close()
     cnx.close()
 
@@ -1362,15 +1392,24 @@ class movies_genre_likes(Resource):
 class pregunta_respuesta_chatbot(Resource):
     def post(self):
         data = request.get_json()
-        pregunta = None
+        #pregunta = None
         if "pregunta" in data.keys():
             pregunta = data["pregunta"]  # en base a que criterio se escoge a las tops
 
         respuesta = None
         if "respuesta" in data.keys():
             respuesta = data["respuesta"]
-        Inserta(pregunta, respuesta)
-        return {'pregunta': pregunta, 'respuesta': respuesta}, 200
+
+        intenciones = []
+        if "intenciones" in data.keys():
+            intenciones = data["intenciones"]
+
+        entidades = []
+        if "entidades" in data.keys():
+            entidades = data["entidades"]
+
+        Inserta(data)
+        return {'pregunta': pregunta, 'respuesta': respuesta, "intenciones":intenciones, "entidades": entidades}, 200
 
 # Webhook: TODO POST
 class pelicula_estadistica(Resource):
