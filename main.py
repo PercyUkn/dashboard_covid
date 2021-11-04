@@ -570,6 +570,32 @@ def init_dashboard(server):
 
                     # Chatbot
                     html.Div([
+                        html.P('Seleccionar tiempo de actualización: ',
+                               className="fix-label",
+                               style={'color': 'white'}),
+                        # Slider_update
+                        html.Div([
+                            dcc.Slider(
+                                min=10,
+                                max=40,
+                                step=None,
+                                value=5,
+                                tooltip={"placement": "bottom", "always_visible": True},
+                                id="interval_slider",
+                                marks={
+                                    10: '10 s',
+                                    20: '20 s',
+                                    30: '30 s',
+                                    40: '40 s',
+                                },
+                                # className="dcc-compon",
+                            )
+                        ], className="card_container twelve columns"),
+
+                    ], className="row flex display"),
+
+                    # Chatbot
+                    html.Div([
                         # Pie del chatbot
                         html.Div([
                             dcc.Graph(figure=fig_duration_box, className="dcc-compon",
@@ -1277,9 +1303,15 @@ def init_callbacks(app):
 
         return options
 
+    @app.callback(Output('interval-component', 'interval'),Input('interval_slider','value'))
+    def update_chatbot(slider_value):
+        return slider_value*1000
+
+
     @app.callback(Output('pie_efic_chatbot', 'figure'), Output('histograma_uso_chatbot', 'figure'),
                   Input('interval-component', 'n_intervals'))
     def update_chatbot(n):
+        print(n)
         con = mysql.connector.connect(user='u650849267_chatbot', password='Chatbot1',
                                       host='45.93.101.1',
                                       database='u650849267_chatbot')
@@ -1318,7 +1350,7 @@ def init_callbacks(app):
         )
 
         fig_fechas_histogram.update_traces(patch=trace_patch_factory())
-
+        con.close()
         return fig_pie_efic_chatbot, fig_fechas_histogram
 
     @app.callback(dd.Output('wordcloud_CB', 'src'), Input('interval-component', 'n_intervals'))
@@ -1342,6 +1374,7 @@ def init_callbacks(app):
 
         img = BytesIO()
         wordcloud.save(img, format='PNG')
+        con.close()
         return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
 
 app = Flask(__name__)
