@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import dash.dependencies as dd
 from io import BytesIO
 import base64
+from collections import Counter
 
 
 #### DATOS
@@ -1364,12 +1365,12 @@ def init_callbacks(app):
         data_chatbot2.drop(data_chatbot2.loc[data_chatbot2['valor'] == 'menos'].index, inplace=True)
         tendencia = data_chatbot2.valor
         plt.subplots(figsize=(10, 10))
-
+        word_could_dict = Counter(list(tendencia))
         wordcloud = WordCloud(
             background_color='#1F2C56',
             width=1000,
             height=500
-        ).generate(' '.join(tendencia))
+        ).generate_from_frequencies(word_could_dict)
         wordcloud = wordcloud.to_image()
 
         img = BytesIO()
