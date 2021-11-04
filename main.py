@@ -1473,6 +1473,36 @@ class director_estadistica(Resource):
         if director_peliculas:
             return {"director": director_name, "n_peliculas": n_peliculas, "peliculas_famosas":peliculas_famosas, "peliculas_link":peliculas_famosas_link}
 
+class actor_estadistica(Resource):
+    def post(self):
+        data = request.get_json()
+        actor_peliculas = (
+                    "actor_peliculas" in data.keys())  # Para activar: devolver colores, se puede añadir más funcionalidad
+        actor_name = None
+        pelis_actor = []
+        pelis_actor_link = []
+        n_peliculas = 0
+        # Carga datos según el nombre de la película
+        if "actor_name" in data.keys():
+            actor_name=data["actor_name"]
+            for i in range(1, 4):
+                field = f"actor_{i}_name"
+                pelis = data3.query(f"{field} == @actor_name").sort_values(by="imdb_score", ascending=False)[
+                    "movie_title"]
+                pelis_link = data3.query(f"{field} == @actor_name").sort_values(by="imdb_score", ascending=False)[
+                    "movie_imdb_link"]
+                if (len(pelis) > 0):
+                    pelis_actor.extend(list(pelis))
+                    pelis_actor_link.extend(list(pelis_link))
+            n_peliculas = int(len(pelis_actor))
+            if (n_peliculas > 5):
+                peliculas_famosas = pelis_actor[:5]
+                peliculas_famosas_link = pelis_actor_link[:5]
+            else:
+                peliculas_famosas = pelis_actor
+                peliculas_famosas_link = pelis_actor_link
+        if actor_peliculas:
+            return {"actor_name":actor_name,"n_peliculas": n_peliculas, "peliculas_famosas":peliculas_famosas, "peliculas_link":peliculas_famosas_link}
 
 # Responde a la pregunta: "Cuál es la película del genero $genre con más $likes (likes == si está presente o no)"
 
@@ -1480,6 +1510,7 @@ api.add_resource(movies_genre_likes, '/genre_likes')
 api.add_resource(pregunta_respuesta_chatbot, '/estadisticas_chatbot')
 api.add_resource(pelicula_estadistica, '/estadisticas_peliculas')
 api.add_resource(director_estadistica, '/estadisticas_director')
+api.add_resource(actor_estadistica, '/estadisticas_actor')
 
 if __name__ == '__main__':
     app.run(debug=True)
