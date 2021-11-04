@@ -4,7 +4,7 @@
 # Press ⌘F8 to toggle the breakpoint.
 # Imports necesarios
 import json
-
+import mysql.connector
 import dash
 from dash import html, callback
 from dash import dcc
@@ -15,6 +15,12 @@ import plotly.express as px
 from flask import Flask, request
 from flask_restful import Resource, Api
 import math
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import dash.dependencies as dd
+from io import BytesIO
+import base64
+
 
 #### DATOS
 ########################################################################################################################
@@ -225,6 +231,26 @@ def init_dashboard(server):
     # Dash
     dash_app = dash.Dash(__name__)
 
+    # Tabs style
+    tabs_styles = {
+        'height': '44px'
+    }
+    tab_style = {
+        'borderBottom': '1px solid #d6d6d6',
+        'backgroundColor': '#0B1222',
+        'padding': '6px',
+        'color': 'white',
+
+    }
+
+    tab_selected_style = {
+        'borderTop': '1px solid #d6d6d6',
+        'borderBottom': '1px solid #d6d6d6',
+        'backgroundColor': '#119DFF',
+        'color': 'white',
+        'padding': '6px',
+        'fontWeight': 'bold'
+    }
     dash_app.layout = html.Div(children=[
 
         # Cabecera
@@ -262,259 +288,325 @@ def init_dashboard(server):
 
         ], id="header", className="row flex display", style={'marginBottom': '25px'}),
 
-        # Primera fila
+        # Tabs
         html.Div([
-            # Dropdown de películas
-            html.Div([
-                html.P('Seleccionar película: ', className="fix-label", style={'color': 'white'}),
-                dcc.Dropdown(id="dropdown_movies",
-                             multi=False,
-                             searchable=True,
-                             value='The Good, the Bad and the Ugly\xa0',
-                             placeholder='Select Country',
-                             options=[{'label': c, 'value': c} for c in movie_names_unique],
-                             # Lista de diccionarios con los paises
-                             className="dcc-compon",
-                             clearable=False,
-                             ),
-                html.H3(children='Género',
-                        style={'textAlign': "center",
-                               "color": "white",
-                               "fontSize": 30,
-                               "marginTop": "148px"
-                               }
-                        ),
-                html.P(children="",
-                       style={'textAlign': "center",
-                              "color": "orange",
-                              "fontSize": 40}
-                       , id="movie_genre"),
-            ], className="create-container three columns"),
+            dcc.Tabs([
+                dcc.Tab(label='Inicio', style=tab_style, selected_style=tab_selected_style, children=[
+                    # Primera fila
+                    html.Div([
+                        # Dropdown de películas
+                        html.Div([
+                            html.P('Seleccionar película: ', className="fix-label", style={'color': 'white'}),
+                            dcc.Dropdown(id="dropdown_movies",
+                                         multi=False,
+                                         searchable=True,
+                                         value='The Good, the Bad and the Ugly\xa0',
+                                         placeholder='Select Country',
+                                         options=[{'label': c, 'value': c} for c in movie_names_unique],
+                                         # Lista de diccionarios con los paises
+                                         className="dcc-compon",
+                                         clearable=False,
+                                         ),
+                            html.H3(children='Género',
+                                    style={'textAlign': "center",
+                                           "color": "white",
+                                           "fontSize": 30,
+                                           "marginTop": "148px"
+                                           }
+                                    ),
+                            html.P(children="",
+                                   style={'textAlign': "center",
+                                          "color": "orange",
+                                          "fontSize": 40}
+                                   , id="movie_genre"),
+                        ], className="create-container three columns"),
 
-            # KPI's rating y likes
-            html.Div(children=[
-                html.Div(children=[
-                    dcc.Graph(id="imdb_score_kpi", config={'displayModeBar': False}, className="dcc-compon",
-                              style={'marginTop': '20px'}),
-                ])
-                ,
-                # KPI likes
-                html.Div(children=[
-                    dcc.Graph(id="likes_kpi", config={'displayModeBar': False}, className="dcc-compon",
-                              style={'marginTop': '20px'}),
-                ])
-            ], className="create-container three columns"),
+                        # KPI's rating y likes
+                        html.Div(children=[
+                            html.Div(children=[
+                                dcc.Graph(id="imdb_score_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                                          style={'marginTop': '20px'}),
+                            ])
+                            ,
+                            # KPI likes
+                            html.Div(children=[
+                                dcc.Graph(id="likes_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                                          style={'marginTop': '20px'}),
+                            ])
+                        ], className="create-container three columns"),
 
-            # KPI's gross y budget
-            html.Div(children=[
-                html.Div(children=[
-                    dcc.Graph(id="gross_kpi", config={'displayModeBar': False}, className="dcc-compon",
-                              style={'marginTop': '20px'}),
+                        # KPI's gross y budget
+                        html.Div(children=[
+                            html.Div(children=[
+                                dcc.Graph(id="gross_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                                          style={'marginTop': '20px'}),
+                            ]),
+                            html.Div(children=[
+                                dcc.Graph(id="budget_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                                          style={'marginTop': '20px'}),
+                            ])
+                        ], className="create-container three columns"),
+
+                        # KPI duration
+                        html.Div(children=[
+                            dcc.Graph(id="duration_kpi", config={'displayModeBar': False}, className="dcc-compon",
+                                      style={'marginTop': '20px'})
+                        ], className="create-container three columns"),
+
+                    ], className="row flex display")
+                    ,
+
+                    # Segunda fila
+                    html.Div([
+
+                        html.Div([
+                            html.P('Seleccionar género: ', className="fix-label", style={'color': 'white'}),
+                            dcc.Dropdown(id="dropdown_genres",
+                                         multi=False,
+                                         searchable=True,
+                                         value='Action',
+                                         placeholder='Seleccionar género',
+                                         options=[{'label': c, 'value': c} for c in genres_unique],
+                                         className="dcc-compon",
+                                         clearable=False,
+                                         ),
+                        ], className="create-container three columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_gross_budget, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="histogram_duration")
+                        ], className="card_container five columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="box_duration")
+                        ], className="card_container four columns", style={"marginLeft": "2px"}, ),
+
+                    ], className="row flex display"),
+
+                    # Tercera fila
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_gross_budget, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="scatter_gross_budget")
+                        ], className="card_container six columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="scatter_gross_likes")
+                        ], className="card_container six columns", style={"marginLeft": "2px"}),
+
+                    ], className="row flex display"),
+
+                    # Cuarta fila
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_gross_budget, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="scatter_gross_budget_clean")
+                        ], className="card_container six columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="scatter_gross_likes_clean")
+                        ], className="card_container six columns", style={"marginLeft": "2px"}),
+
+                    ], className="row flex display"),
+
+                    # Quinta fila - Scatter Ingreso vs Presupuesto vs Score vs Países
+                    html.Div([
+                        html.Div([
+                            html.P('Seleccionar países: ', className="fix-label", style={'color': 'white'}),
+                            dcc.Dropdown(id="dropdown_countries",
+                                         multi=True,
+                                         searchable=True,
+                                         value=['USA', 'Canada'],
+                                         placeholder='Seleccionar país(es)',
+                                         options=[{'label': c, 'value': c} for c in paises_unique],
+                                         className="dcc-compon",
+                                         clearable=False,
+                                         ),
+                            dcc.Graph(figure=fig_duration_histogram, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="scatter_gross_budget_score_countries")
+                        ], className="create-container twelve columns")
+                    ], className="row flex display"),
+
+                    # Cuarta fila - Mapa - Choropleth
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_histogram, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="choropleth")
+                        ], className="card_container twelve columns"),
+                    ], className="row flex display"),
+
+                    # Quinta fila - Slider - Cantidad de películas por país
+                    html.Div([
+                        html.Div([
+                            html.P('Seleccionar cantidad de países con mayor cantidad de películas: ',
+                                   className="fix-label",
+                                   style={'color': 'white'}),
+                            dcc.Slider(
+                                min=1,
+                                max=10,
+                                step=1,
+                                value=5,
+                                tooltip={"placement": "bottom", "always_visible": True},
+                                id="top_countries_slider"
+                                # className="dcc-compon",
+                            )
+                        ], className="create-container twelve columns")
+                    ], className="row flex display"),
+
+                    # Sexta fila - Gráficos en 3D
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="3d_score_budget_country")
+                        ], className="card_container six columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="3d_score_likes_country"),
+                        ], className="card_container six columns"),
+
+                    ], className="row flex display"),
+
+                    # Septima  fila - Dona
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="pie_movies_country")
+                        ], className="card_container six columns"),
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="pie_gross_country")
+                        ], className="card_container six columns"),
+                    ], className="row flex display"),
+
+                    # Octava  fila - Dona - Duración
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="pie_duration_range")
+                        ], className="card_container twelve columns"),
+                    ], className="row flex display"),
+
+                    # Octava fila - Presupuesto promedio anual por género y Likes vs Votos en IMDb
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="average_budget_per_genre")
+                        ], className="card_container six columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="likes_votes_per_genre"),
+                        ], className="card_container six columns"),
+
+                    ], className="row flex display"),
+
+                    # Novena fila - Calificaciones por IMDb por género y # de películas por año
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="imdb_score_per_genre")
+                        ], className="card_container six columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="movies_per_year_per_genre"),
+                        ], className="card_container six columns"),
+
+                    ], className="row flex display"),
+
+                    # Décima fila - Embudo de contenido por género, dropdown de categorías y categoría más rentable por categoría y
+                    # por género
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="funnel_category_per_genre")
+                        ], className="card_container four columns"),
+
+                        # Dropdown de categorías
+                        html.Div([
+                            html.P('Seleccionar categoría: ', className="fix-label", style={'color': 'white'}),
+                            dcc.Dropdown(id="dropdown_categories",
+                                         multi=False,
+                                         searchable=True,
+                                         value='R',
+                                         placeholder='Seleccionar género',
+                                         options=[{'label': c, 'value': c} for c in categories_unique],
+                                         className="dcc-compon",
+                                         clearable=False,
+                                         ),
+                        ], className="create-container three columns"),
+
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="gross_per_category_per_genre"),
+                        ], className="card_container five columns"),
+
+                    ], className="row flex display"),
                 ]),
-                html.Div(children=[
-                    dcc.Graph(id="budget_kpi", config={'displayModeBar': False}, className="dcc-compon",
-                              style={'marginTop': '20px'}),
-                ])
-            ], className="create-container three columns"),
+                dcc.Tab(label='Chatbot', style=tab_style, selected_style=tab_selected_style, children=[
 
-            # KPI duration
-            html.Div(children=[
-                dcc.Graph(id="duration_kpi", config={'displayModeBar': False}, className="dcc-compon",
-                          style={'marginTop': '20px'})
-            ], className="create-container three columns"),
+                    # Chatbot
+                    html.Div([
+                        # Pie del chatbot
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_box, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="pie_efic_chatbot")
+                        ], className="card_container six columns"),
 
-        ], className="row flex display")
-        ,
+                        # Histograma de uso
+                        html.Div([
+                            dcc.Graph(figure=fig_duration_histogram, className="dcc-compon",
+                                      config={'displayModeBar': 'hover'},
+                                      id="histograma_uso_chatbot")
+                        ], className="card_container six columns"),
+                        dcc.Interval(
+                            id='interval-component',
+                            interval=1 * 10000,  # Cada 10 segundos se actualiza automáticamente
+                            n_intervals=0
+                        )
+                    ], className="row flex display"),
 
-        # Segunda fila
-        html.Div([
+                    html.Div([
+                        # Nube de palabras
+                        html.Div([
 
-            html.Div([
-                html.P('Seleccionar género: ', className="fix-label", style={'color': 'white'}),
-                dcc.Dropdown(id="dropdown_genres",
-                             multi=False,
-                             searchable=True,
-                             value='Action',
-                             placeholder='Seleccionar género',
-                             options=[{'label': c, 'value': c} for c in genres_unique],
-                             className="dcc-compon",
-                             clearable=False,
-                             ),
-            ], className="create-container three columns"),
+                            html.H5("Palabras más usadas", style={"marginBottom": '0px', 'color': 'white'}),
+                            html.Img(title="Nube de palabras", id="wordcloud_CB"),
 
-            html.Div([
-                dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="histogram_duration")
-            ], className="card_container five columns"),
+                        ], className="card_container twelve columns", style={'textAlign': 'center'}),
+                        # Boton refresh
+                      #  html.Div([
+                      #      html.A(html.Button('Actualizar', id="refresh"), href='/'),
+                      #  ], className="card_container two columns", style={'textAlign': 'center'}),
+                    ], className="row flex display"),
+                ]),
+            ]),
 
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="box_duration")
-            ], className="card_container four columns", style={"marginLeft": "2px"}, ),
-
-        ], className="row flex display"),
-
-        # Tercera fila
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="scatter_gross_budget")
-            ], className="card_container six columns"),
-
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="scatter_gross_likes")
-            ], className="card_container six columns", style={"marginLeft": "2px"}),
-
-        ], className="row flex display"),
-
-        # Cuarta fila
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_gross_budget, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="scatter_gross_budget_clean")
-            ], className="card_container six columns"),
-
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="scatter_gross_likes_clean")
-            ], className="card_container six columns", style={"marginLeft": "2px"}),
-
-        ], className="row flex display"),
-
-        # Quinta fila - Scatter Ingreso vs Presupuesto vs Score vs Países
-        html.Div([
-            html.Div([
-                html.P('Seleccionar países: ', className="fix-label", style={'color': 'white'}),
-                dcc.Dropdown(id="dropdown_countries",
-                             multi=True,
-                             searchable=True,
-                             value=['USA', 'Canada'],
-                             placeholder='Seleccionar país(es)',
-                             options=[{'label': c, 'value': c} for c in paises_unique],
-                             className="dcc-compon",
-                             clearable=False,
-                             ),
-                dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="scatter_gross_budget_score_countries")
-            ], className="create-container twelve columns")
-        ], className="row flex display"),
-
-        # Cuarta fila - Mapa - Choropleth
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_histogram, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="choropleth")
-            ], className="card_container twelve columns"),
-        ], className="row flex display"),
-
-        # Quinta fila - Slider - Cantidad de películas por país
-        html.Div([
-            html.Div([
-                html.P('Seleccionar cantidad de países con mayor cantidad de películas: ', className="fix-label",
-                       style={'color': 'white'}),
-                dcc.Slider(
-                    min=1,
-                    max=10,
-                    step=1,
-                    value=5,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    id="top_countries_slider"
-                    # className="dcc-compon",
-                )
-            ], className="create-container twelve columns")
-        ], className="row flex display"),
-
-        # Sexta fila - Gráficos en 3D
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="3d_score_budget_country")
-            ], className="card_container six columns"),
-
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="3d_score_likes_country"),
-            ], className="card_container six columns"),
-
-        ], className="row flex display"),
-
-        # Septima  fila - Dona
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="pie_movies_country")
-            ], className="card_container six columns"),
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="pie_gross_country")
-            ], className="card_container six columns"),
-        ], className="row flex display"),
-
-        # Octava  fila - Dona - Duración
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="pie_duration_range")
-            ], className="card_container twelve columns"),
-        ], className="row flex display"),
-
-        # Octava fila - Presupuesto promedio anual por género y Likes vs Votos en IMDb
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="average_budget_per_genre")
-            ], className="card_container six columns"),
-
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="likes_votes_per_genre"),
-            ], className="card_container six columns"),
-
-        ], className="row flex display"),
-
-        # Novena fila - Calificaciones por IMDb por género y # de películas por año
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="imdb_score_per_genre")
-            ], className="card_container six columns"),
-
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="movies_per_year_per_genre"),
-            ], className="card_container six columns"),
-
-        ], className="row flex display"),
-
-        # Décima fila - Embudo de contenido por género, dropdown de categorías y categoría más rentable por categoría y
-        # por género
-        html.Div([
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="funnel_category_per_genre")
-            ], className="card_container four columns"),
-
-            # Dropdown de categorías
-            html.Div([
-                html.P('Seleccionar categoría: ', className="fix-label", style={'color': 'white'}),
-                dcc.Dropdown(id="dropdown_categories",
-                             multi=False,
-                             searchable=True,
-                             value='R',
-                             placeholder='Seleccionar género',
-                             options=[{'label': c, 'value': c} for c in categories_unique],
-                             className="dcc-compon",
-                             clearable=False,
-                             ),
-            ], className="create-container three columns"),
-
-            html.Div([
-                dcc.Graph(figure=fig_duration_box, className="dcc-compon", config={'displayModeBar': 'hover'},
-                          id="gross_per_category_per_genre"),
-            ], className="card_container five columns"),
-
-        ], className="row flex display"),
+        ]),
 
     ], id="mainContainer", style={'display': 'flex', 'flexDirection': 'column'})
     dash_app.title = "Movies Dashboard"
@@ -1185,6 +1277,72 @@ def init_callbacks(app):
 
         return options
 
+    @app.callback(Output('pie_efic_chatbot', 'figure'), Output('histograma_uso_chatbot', 'figure'),
+                  Input('interval-component', 'n_intervals'))
+    def update_chatbot(n):
+        con = mysql.connector.connect(user='u650849267_chatbot', password='Chatbot1',
+                                      host='45.93.101.1',
+                                      database='u650849267_chatbot')
+        data_chatbot = pd.read_sql("SELECT * from dialogo", con)
+
+        # Pie
+        eficienciaCB = data_chatbot.groupby(['entendio']).count()
+        eficienciaCB['Descripcion'] = ['Errores', 'Éxitos']
+        eficienciaCB = eficienciaCB.rename(columns={'id_dialogo': 'Cantidad'})
+        fig_pie_efic_chatbot = px.pie(eficienciaCB, values='Cantidad', names='Descripcion')
+        fig_pie_efic_chatbot.update_traces(textposition='inside', textinfo='percent+label')
+        fig_pie_efic_chatbot.update_layout(
+            layout_factory(title="Eficacia del Chatbot"))
+        fig_pie_efic_chatbot.update_layout(legend=dict(
+            yanchor="top",
+            y=0.0,
+            xanchor="left",
+            x=0.0
+        ))
+        # Histograma
+        fig_fechas_histogram = px.histogram(data_chatbot, x="fecha",
+                                            title='Histograma del uso del chatbot', opacity=0.8)
+
+        fig_fechas_histogram.update_layout(
+            layout_factory(title=f"Histograma del uso del chatbot"))
+
+        fig_fechas_histogram.update_layout(
+            xaxis=dict(title='<b>Fecha y Hora</b>',
+                       color='white',
+                       showline=True,
+                       showgrid=True),
+            yaxis=dict(title='<b>Frecuencia</b>',
+                       color='white',
+                       showline=True,
+                       showgrid=True),
+        )
+
+        fig_fechas_histogram.update_traces(patch=trace_patch_factory())
+
+        return fig_pie_efic_chatbot, fig_fechas_histogram
+
+    @app.callback(dd.Output('wordcloud_CB', 'src'), Input('interval-component', 'n_intervals'))
+    # Nube de palabras
+    def plot_wordcloud(b):
+        con = mysql.connector.connect(user='u650849267_chatbot', password='Chatbot1',
+                                      host='45.93.101.1',
+                                      database='u650849267_chatbot')
+        data_chatbot2 = pd.read_sql("SELECT * from entidad", con)
+        data_chatbot2.drop(data_chatbot2.loc[data_chatbot2['valor'] == 'más'].index, inplace=True)
+        data_chatbot2.drop(data_chatbot2.loc[data_chatbot2['valor'] == 'menos'].index, inplace=True)
+        tendencia = data_chatbot2.valor
+        plt.subplots(figsize=(10, 10))
+
+        wordcloud = WordCloud(
+            background_color='#1F2C56',
+            width=1000,
+            height=500
+        ).generate(' '.join(tendencia))
+        wordcloud = wordcloud.to_image()
+
+        img = BytesIO()
+        wordcloud.save(img, format='PNG')
+        return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
 
 app = Flask(__name__)
 app = init_dashboard(app)
@@ -1198,7 +1356,7 @@ api = Api(app)
 
 ## BASE DE DATOS -- MYSQL
 
-import mysql.connector
+
 
 
 def conexion():
